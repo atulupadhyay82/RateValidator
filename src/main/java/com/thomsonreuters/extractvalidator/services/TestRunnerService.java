@@ -12,7 +12,7 @@ import com.thomsonreuters.extractvalidator.dto.TestResult;
 import com.thomsonreuters.extractvalidator.dto.TestRun;
 import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
 import com.thomsonreuters.extractvalidator.dto.extract.config.ExtractDefinition;
-import com.thomsonreuters.extractvalidator.util.CompanyConfig;
+import com.thomsonreuters.extractvalidator.determination.CompanyConfig;
 
 
 /**
@@ -47,29 +47,29 @@ public final class TestRunnerService
 		// Initialize the configured tests result map.
 		initializeRunResults();
 
-		// Find the company config, extract config, and content extract test run data passed in.
-		final CompanyConfig companyConfig = companyConfigService.findCompanyConfig(testRunData);
-		final ExtractDefinition extractConfig = extractConfigService.findExtractConfig(testRunData);
-		final ContentExtract contentExtract = contentExtractService.findContentExtract(testRunData);
+		TestResult testResult = new TestResult();
 
-		// Iterate through the configured tests and run them, capturing the results for each test.
-		for (final Map.Entry<String, TestResult> entry : runResults.entrySet())
+		try
 		{
-			TestResult testResult = new TestResult();
 
-			try
+			// Find the company config, extract config, and content extract test run data passed in.
+			final CompanyConfig companyConfig = companyConfigService.buildCompanyConfig(testRunData);
+			final ExtractDefinition extractConfig = extractConfigService.findExtractConfig(testRunData);
+			final ContentExtract contentExtract = contentExtractService.findContentExtract(testRunData);
+
+			// Iterate through the configured tests and run them, capturing the results for each test.
+			for (final Map.Entry<String, TestResult> entry : runResults.entrySet())
 			{
 				testResult = entry.getValue();
 
 				executeTest(entry.getKey(), testResult, extractConfig, companyConfig, contentExtract);
 			}
-			catch(final Exception exception)
-			{
-				testResult.setStatus(FAILED);
-				testResult.setMessage(exception.getMessage());
-			}
 		}
-
+		catch(final Exception exception)
+		{
+			testResult.setStatus(FAILED);
+			testResult.setMessage(exception.getMessage());
+		}
 
 		return new RunResults(runResults, testRunData.getTestRunNumber());
 	}

@@ -1,0 +1,42 @@
+<!--
+  ~ Copyright 2018 Thomson Reuters/ONESOURCE. All rights reserved.
+  -->
+
+<!DOCTYPE hibernate-configuration PUBLIC
+		"-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+		"http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+
+	<session-factory>
+		<property name="hibernate.current_session_context_class">thread</property>
+		<property name="hibernate.hbm2ddl.auto.off">true</property>
+		<property name="hibernate.show_sql">false</property>
+		<property name="hibernate.format_sql">true</property>
+
+		<property name="hibernate.session_factory_name">java:hibernate/hbm2JavaSessionFactory</property>
+		<property name="hibernate.dialect">org.hibernate.dialect.Oracle10gDialect</property>
+		<property name="hibernate.connection.driver_class">oracle.jdbc.driver.OracleDriver</property>
+
+		<property name="hibernate.jdbc.batch_size">25</property>
+		<property name="hibernate.jdbc.fetch_size">50</property>
+		<property name="hibernate.order_inserts">true</property>
+		<property name="hibernate.order_updates">true</property>
+
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.Authority"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.AuthorityType"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.Location"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.LocationSet"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.Merchant"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.ProductCategory"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.ProductGroup"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.ProductQualifier"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.ProductQualifierGroup"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.Rate"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.RateTier"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.Rule"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.Zone"/>
+		<mapping class="com.thomsonreuters.extractvalidator.determination.entities.ZoneLevel"/>
+	</session-factory>
+
+</hibernate-configuration>
