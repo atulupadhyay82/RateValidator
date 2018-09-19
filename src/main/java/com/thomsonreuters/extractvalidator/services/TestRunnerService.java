@@ -4,6 +4,7 @@ package com.thomsonreuters.extractvalidator.services;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -22,6 +23,7 @@ import com.thomsonreuters.extractvalidator.dto.TestRun;
 import com.thomsonreuters.extractvalidator.dto.determination.UiCompany;
 import com.thomsonreuters.extractvalidator.dto.determination.UiCompanyList;
 import com.thomsonreuters.extractvalidator.dto.determination.UiLineTaxDetail;
+import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenario;
 import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioDetail;
 import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioLine;
 import com.thomsonreuters.extractvalidator.dto.determination.UiScenarioResult;
@@ -149,13 +151,55 @@ public final class TestRunnerService
 		}
 		else
 		{
-			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Running extract validation.");
-			verifyContentExtractWithModelScenario(extract, testRunData, testCompany, testCases);
+			try
+			{
+				// If cleanup model scenario is set, check to see if a model scenario with the same name did not get deleted in a previous run. Find it and delete it.
+				if (testRunData.isCleanupModelScenario())
+				{
+					cleanupOldModelScenario(testRunData, testCompany);
+				}
+
+				LOGGER.info(Logger.EVENT_UNSPECIFIED, "Running extract validation.");
+				verifyContentExtractWithModelScenario(extract, testRunData, testCompany, testCases);
+			}
+			catch (final Exception ex)
+			{
+				final TestCase testCase = new TestCase();
+
+				testCase.setTestResult("ERROR");
+				testCase.setMessage(ex.getMessage());
+				runResults.getTestCases().add(testCase);
+
+				LOGGER.error(Logger.EVENT_FAILURE, "Something went wrong. Message: " + ex.getMessage());
+			}
 		}
 
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "All runs complete, returning test cases.");
 
 		return runResults;
+	}
+
+
+	/**
+	 * Clean up old model scenario if the name and company match data passed in.
+	 *
+	 * @param testRunData The test run data provided by the user.
+	 * @param testCompany The test company provided by the user.
+	 */
+	private void cleanupOldModelScenario(final TestRun testRunData, final UiCompany testCompany)
+	{
+		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Finding model scenarios to clean up.");
+		final List<UiModelScenario> modelScenarios = externalRestClient.findModelScenarios(testRunData);
+
+		for (final UiModelScenario uiModelScenario : modelScenarios)
+		{
+			if (uiModelScenario.getScenarioName().equals(testRunData.getModelScenarioName()) && uiModelScenario.getCompany().getCompanyName().equals(testCompany.getCompanyName()))
+			{
+				LOGGER.info(Logger.EVENT_UNSPECIFIED, "Found model scenario with name: " + uiModelScenario.getScenarioName() + " for company: " + testCompany.getCompanyName());
+				LOGGER.info(Logger.EVENT_UNSPECIFIED, "Deleting model scenario");
+				externalRestClient.deleteModelScenario(testRunData, Collections.singletonList(uiModelScenario.getScenarioId().toString()));
+			}
+		}
 	}
 
 
@@ -198,7 +242,7 @@ public final class TestRunnerService
 	{
 		final List<String> scenarioIds = new LinkedList<>();
 		final LocalDateTime effectiveDate = LocalDateTime.now();
-		final UiModelScenarioDetail uiModelScenarioDetail = ModelScenarioUtil.buildNewModelScenario(company, contentExtract, effectiveDate);
+		final UiModelScenarioDetail uiModelScenarioDetail = ModelScenarioUtil.buildNewModelScenario(company, contentExtract, effectiveDate, testRunData.getModelScenarioName());
 
 		UiModelScenarioDetail newModelScenario;
 		int scenarioCounter = 1;

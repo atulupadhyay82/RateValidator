@@ -25,6 +25,7 @@ import lombok.Data;
 
 import com.thomsonreuters.extractvalidator.dto.TestRun;
 import com.thomsonreuters.extractvalidator.dto.determination.UiCompanyList;
+import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenario;
 import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioDetail;
 import com.thomsonreuters.extractvalidator.dto.determination.UiScenarioResult;
 import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
@@ -98,6 +99,11 @@ public class ExternalRestClient
 	 * The path to Determination rest service: run model scenarios.
 	 */
 	static final String REST_SERVICE_URI_RUN_MOD_SCEN = "/sabrix/services/rest/modelscenarios/companies/{companyId}/scenarios/{scenarioId}/calculate";
+
+	/**
+	 * The path to Determination rest service: find all model scenarios that user has access to.
+	 */
+	static final String REST_SERVICE_URI_FIND_MOD_SCEN = "/sabrix/services/rest/modelscenarios";
 
 	/**
 	 * Used for Content-Type header value.
@@ -387,6 +393,34 @@ public class ExternalRestClient
 				HttpMethod.GET,
 				new HttpEntity<String>(createHttpHeaders(authorization)),
 				UiScenarioResult.class
+		);
+
+		LOG.info(Logger.EVENT_UNSPECIFIED, REST_SERVICE_CALL_COMPLETE);
+
+		return responseEntity.getBody();
+	}
+
+
+	/**
+	 * Makes rest service call to Determination's find model scenarios service.
+	 *
+	 * @param testRunData The test run data containing the authorization info to use for the request.
+	 *
+	 * @return The result of the rest service call.
+	 */
+	public List<UiModelScenario> findModelScenarios(final TestRun testRunData)
+	{
+		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
+		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(determinationBaseUrl).path(REST_SERVICE_URI_FIND_MOD_SCEN);
+		final URI uri = builder.build().encode().toUri();
+
+		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
+
+		final ResponseEntity<List<UiModelScenario>> responseEntity = restTemplate.exchange(
+				uri,
+				HttpMethod.GET,
+				new HttpEntity<String>(createHttpHeaders(authorization)),
+				new ParameterizedTypeReference<List<UiModelScenario>>(){}
 		);
 
 		LOG.info(Logger.EVENT_UNSPECIFIED, REST_SERVICE_CALL_COMPLETE);

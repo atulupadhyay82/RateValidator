@@ -45,19 +45,24 @@ public final class ModelScenarioUtil
 	 * @param company The company to use.
 	 * @param contentExtract The extract to use for building lines.
 	 * @param effectiveDate The effective date to use.
+	 * @param modelScenarioName Name of the model scenario to use.
 	 *
 	 * @return A model scenario with default values, and lines built for each product in the content extract.
 	 */
-	public static UiModelScenarioDetail buildNewModelScenario(final UiCompany company, final ContentExtract contentExtract, final LocalDateTime effectiveDate)
+	public static UiModelScenarioDetail buildNewModelScenario(final UiCompany company,
+															  final ContentExtract contentExtract,
+															  final LocalDateTime effectiveDate,
+															  final String modelScenarioName)
 	{
 		final UiModelScenarioDetail uiModelScenarioDetail = new UiModelScenarioDetail();
-		final String scenarioName = "Validator-Test-Scenario";
+
+		// Date format expected by Model Scenario endpoint.
 		final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
 		final String scenarioDate = effectiveDate.format(dateTimeFormatter);
 
 		// TODO: Change effective date to content extract effective date?
 		uiModelScenarioDetail.setEffectiveDate(scenarioDate);
-		uiModelScenarioDetail.setScenarioName(scenarioName);
+		uiModelScenarioDetail.setScenarioName(modelScenarioName);
 		uiModelScenarioDetail.setApplyCredit("N");
 		uiModelScenarioDetail.setAuditSpecification("NO_AUDIT");
 		uiModelScenarioDetail.setCalculationType("F");
