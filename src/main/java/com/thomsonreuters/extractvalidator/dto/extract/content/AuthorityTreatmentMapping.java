@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
 import com.thomsonreuters.extractvalidator.util.ActivityCode;
-import com.thomsonreuters.extractvalidator.util.IClientChangeType;
 
 
 /**
@@ -16,7 +15,7 @@ import com.thomsonreuters.extractvalidator.util.IClientChangeType;
  */
 @Data
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-public class AuthorityTreatmentMapping implements IClientChangeType
+public class AuthorityTreatmentMapping
 {
 	/**
 	 * Numeric hash key associated with the AuthorityTreatmentMapping

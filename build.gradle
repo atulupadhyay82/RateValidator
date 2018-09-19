@@ -36,10 +36,9 @@ repositories {
 
 dependencies {
 	// Spring Boot.
-	compile('org.springframework.boot:spring-boot-starter-data-jpa')
 	compile('org.springframework.boot:spring-boot-starter-web')
 	compile('org.springframework.boot:spring-boot-starter-web-services')
-	compile('org.springframework.boot:spring-boot-starter-security')
+	compile('javax.json:javax.json-api:1.1.2')
 
 	// Swagger 2.
 	compile('io.springfox:springfox-swagger2:2.7.0')
@@ -51,11 +50,6 @@ dependencies {
 	// Logging.
 	compile('org.owasp.esapi:esapi:2.1.0.1')
 	compile('log4j:log4j:1.2.17')
-
-	// Lonestar.
-	compile(group: 'com.trta.lonestar', name: 'lonestar-spring-security', version: '2.0.1')
-	compile(group: 'com.trta.lonestar', name: 'lonestar-spring-security-uds', version: '2.0.1')
-	compile(group: 'com.trta.lonestar', name: 'lonestar-uds-support', version: '2.0.1')
 
 	testCompile('org.springframework.boot:spring-boot-starter-test')
 }

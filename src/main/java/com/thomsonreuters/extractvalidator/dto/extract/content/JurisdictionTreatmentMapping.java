@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
 import com.thomsonreuters.extractvalidator.util.ActivityCode;
-import com.thomsonreuters.extractvalidator.util.IClientChangeType;
 
 
 /**
@@ -16,7 +15,7 @@ import com.thomsonreuters.extractvalidator.util.IClientChangeType;
  */
 @Data
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-public class JurisdictionTreatmentMapping implements IClientChangeType
+public class JurisdictionTreatmentMapping
 {
 	/**
 	 * Numeric hash key associated with the JurisdictionTreatmentMapping.

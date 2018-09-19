@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import com.thomsonreuters.extractvalidator.util.ActivityCode;
-import com.thomsonreuters.extractvalidator.util.IClientChangeType;
 
 
 /**
@@ -22,7 +21,7 @@ import com.thomsonreuters.extractvalidator.util.IClientChangeType;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-public class Location implements IClientChangeType
+public class Location
 {
 	/**
 	 * Numeric hash key associated with the stores

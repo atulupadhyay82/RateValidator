@@ -1,6 +1,7 @@
 package com.thomsonreuters.extractvalidator.dto;
 
 
+import java.util.List;
 import java.util.Map;
 
 import lombok.AllArgsConstructor;
@@ -16,6 +17,6 @@ import lombok.Data;
 @AllArgsConstructor
 public final class RunResults
 {
-	private Map<String, TestResult> allResults;
+	private List<TestCase> testCases;
 	private String testRunNumber;
 }

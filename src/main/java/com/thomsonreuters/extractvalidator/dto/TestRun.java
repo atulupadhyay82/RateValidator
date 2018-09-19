@@ -1,6 +1,8 @@
 package com.thomsonreuters.extractvalidator.dto;
 
 
+import java.util.List;
+
 import lombok.Data;
 
 
@@ -17,7 +19,8 @@ public final class TestRun
 	private String testExtractConfigName;
 	private String determinationBaseUrl;
 	private String contentExtractBaseUrl;
-	private String databaseUrl;
-	private String databaseUserName;
-	private String databasePassword;
+	private String udsToken;
+	private String serviceUser;
+	private String servicePassword;
+	private List<TestCase> testCases;
 }

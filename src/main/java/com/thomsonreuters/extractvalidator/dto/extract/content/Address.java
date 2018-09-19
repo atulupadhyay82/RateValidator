@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import com.thomsonreuters.extractvalidator.util.ActivityCode;
-import com.thomsonreuters.extractvalidator.util.IClientChangeType;
 
 
 /**
@@ -21,7 +20,7 @@ import com.thomsonreuters.extractvalidator.util.IClientChangeType;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-public class Address implements IClientChangeType
+public class Address
 {
 	/**
 	 * Numeric hash key associated with a address
