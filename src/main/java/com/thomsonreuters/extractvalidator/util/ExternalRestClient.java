@@ -24,15 +24,18 @@ import org.springframework.web.util.UriComponentsBuilder;
 import lombok.Data;
 
 import com.thomsonreuters.extractvalidator.dto.TestRun;
+import com.thomsonreuters.extractvalidator.dto.content.ClientZone;
 import com.thomsonreuters.extractvalidator.dto.determination.UiCompanyList;
 import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenario;
 import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioDetail;
 import com.thomsonreuters.extractvalidator.dto.determination.UiScenarioResult;
+import com.thomsonreuters.extractvalidator.dto.determination.UiZone;
+import com.thomsonreuters.extractvalidator.dto.determination.UiZoneList;
 import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
 
 
 /**
- * ExtractRestClient Description.
+ * Rest client to handle all outbound REST calls to Determination and Content Extract.
  *
  * @author Matt Godsey
  */
@@ -68,62 +71,67 @@ public class ExternalRestClient
 	/**
 	 * The path to Determination rest service: companies
 	 */
-	static final String REST_SERVICE_URI_CONTENT_EXTRACT = "/taxtreatments/company/{company}/extractName/{extractName}";
+	private static final String REST_SERVICE_URI_CONTENT_EXTRACT = "/services/rest/taxtreatments/company/{company}/extractName/{extractName}";
 
 	/**
 	 * The path to Determination rest service: zones
 	 */
-	static final String REST_SERVICE_URI_EXTRACT_DEFINITIONS = "/contentExtractService/extract/";
+	private static final String REST_SERVICE_URI_EXTRACT_DEFINITIONS = "/services/rest/contentExtractService/extract/";
 
 	/**
 	 * The path to Determination rest service: companies
 	 */
-	static final String REST_SERVICE_URI_COMPANIES = "/sabrix/services/rest/companies/";
+	private static final String REST_SERVICE_URI_COMPANIES = "/sabrix/services/rest/companies/";
 
 	/**
 	 * The path to Determination rest service: create model scenario.
 	 */
-	static final String REST_SERVICE_URI_CREATE_MOD_SCEN = "/sabrix/services/rest/modelscenarios/companies/{companyId}/scenarios";
+	private static final String REST_SERVICE_URI_CREATE_MOD_SCEN = "/sabrix/services/rest/modelscenarios/companies/{companyId}/scenarios";
 
 	/**
 	 * The path to Determination rest service: update model scenario.
 	 */
-	static final String REST_SERVICE_URI_UPDATE_MOD_SCEN = "/sabrix/services/rest/modelscenarios/companies/{companyId}/scenarios/{scenarioId}";
+	private static final String REST_SERVICE_URI_UPDATE_MOD_SCEN = "/sabrix/services/rest/modelscenarios/companies/{companyId}/scenarios/{scenarioId}";
 
 	/**
 	 * The path to Determination rest service: delete model scenarios.
 	 */
-	static final String REST_SERVICE_URI_DELETE_MOD_SCEN = "/sabrix/services/rest/modelscenarios/delete";
+	private static final String REST_SERVICE_URI_DELETE_MOD_SCEN = "/sabrix/services/rest/modelscenarios/delete";
 
 	/**
 	 * The path to Determination rest service: run model scenarios.
 	 */
-	static final String REST_SERVICE_URI_RUN_MOD_SCEN = "/sabrix/services/rest/modelscenarios/companies/{companyId}/scenarios/{scenarioId}/calculate";
+	private static final String REST_SERVICE_URI_RUN_MOD_SCEN = "/sabrix/services/rest/modelscenarios/companies/{companyId}/scenarios/{scenarioId}/calculate";
 
 	/**
 	 * The path to Determination rest service: find all model scenarios that user has access to.
 	 */
-	static final String REST_SERVICE_URI_FIND_MOD_SCEN = "/sabrix/services/rest/modelscenarios";
+	private static final String REST_SERVICE_URI_FIND_MOD_SCEN = "/sabrix/services/rest/modelscenarios";
+
+	/**
+	 * The path to Determination rest service: find all model scenarios that user has access to.
+	 */
+	private static final String REST_SERVICE_URI_FIND_COUNTRIES = "/sabrix/services/internal/certificatemanager/contentmanagement/countries";
 
 	/**
 	 * Used for Content-Type header value.
 	 */
-	static final String HDR_VALUE_CONTENT_TYPE = TRI_ONESOURCE_IDT_JSON;
+	private static final String HDR_VALUE_CONTENT_TYPE = TRI_ONESOURCE_IDT_JSON;
 
 	/**
 	 * Used for Accept header value.
 	 */
-	static final String HDR_VALUE_ACCEPT = TRI_ONESOURCE_IDT_JSON;
+	private static final String HDR_VALUE_ACCEPT = TRI_ONESOURCE_IDT_JSON;
 
 	/**
-	 * Holds value of extract rest service url.
+	 * Constant to use for replacing company ID in the URI.
 	 */
-	private String extractBaseUrl;
+	private static final String COMPANY_ID = "companyId";
 
 	/**
-	 * Holds value of determination rest service url.
+	 * Constant to use for replacing scenario ID in the URI.
 	 */
-	private String determinationBaseUrl;
+	private static final String SCENARIO_ID = "scenarioId";
 
 	/**
 	 * The rest template used for outbound rest service calls to Determination.
@@ -140,28 +148,6 @@ public class ExternalRestClient
 	ExternalRestClient(final RestTemplate restTemplate)
 	{
 		this.restTemplate = restTemplate;
-	}
-
-
-	/**
-	 * Sets the value of Content Extract's base rest service url.
-	 *
-	 * @param testRunData The test run data which contains Content Extract's base rest service url. This must not be {@code null}.
-	 */
-	public void setExtractBaseUrl(final TestRun testRunData)
-	{
-		extractBaseUrl = testRunData.getContentExtractBaseUrl();
-	}
-
-
-	/**
-	 * Sets the value of Determination's base rest service url.
-	 *
-	 * @param testRunData The test run data which contains Determination's base rest service url. This must not be {@code null}.
-	 */
-	public void setDeterminationBaseUrl(final TestRun testRunData)
-	{
-		determinationBaseUrl = testRunData.getDeterminationBaseUrl();
 	}
 
 
@@ -184,6 +170,14 @@ public class ExternalRestClient
 	}
 
 
+	/**
+	 * Create the basic authentication header string.
+	 *
+	 * @param userName The username to include in the string.
+	 * @param password The password to include in the string.
+	 *
+	 * @return The basic authentication header string encoded correctly.
+	 */
 	private String createBasicAuthenticationString(final String userName, final String password)
 	{
 		final String unEncoded = userName + ":" + password;
@@ -200,7 +194,7 @@ public class ExternalRestClient
 	 *
 	 * @return The result of the rest service call.
 	 */
-	public ContentExtract findContentExtractEntity(final String authorization, final URI uri)
+	private ContentExtract findContentExtractEntity(final String authorization, final URI uri)
 	{
 		final ResponseEntity<ContentExtract> responseEntity = restTemplate.exchange(
 				uri,
@@ -221,7 +215,7 @@ public class ExternalRestClient
 	 *
 	 * @return The result of the rest service call.
 	 */
-	public JsonObject findContentExtractJson(final String authorization, final URI uri)
+	private JsonObject findContentExtractJson(final String authorization, final URI uri)
 	{
 		final ResponseEntity<JsonObject> responseEntity = restTemplate.exchange(
 				uri,
@@ -246,7 +240,7 @@ public class ExternalRestClient
 	public Object findContentExtract(final TestRun testRunData, final boolean isStatic)
 	{
 		final String authorization = createBasicAuthenticationString(testRunData.getServiceUser(), testRunData.getServicePassword());
-		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(extractBaseUrl).path(REST_SERVICE_URI_CONTENT_EXTRACT);
+		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getContentExtractBaseUrl()).path(REST_SERVICE_URI_CONTENT_EXTRACT);
 		final Map<String, String> params = new HashMap<>();
 
 		params.put("company", testRunData.getTestCompanyName());
@@ -276,7 +270,7 @@ public class ExternalRestClient
 	public UiCompanyList findCompanies(final TestRun testRunData)
 	{
 		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
-		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(determinationBaseUrl).path(REST_SERVICE_URI_COMPANIES);
+		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_COMPANIES);
 		final URI uri = builder.build().encode().toUri();
 
 		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
@@ -294,13 +288,22 @@ public class ExternalRestClient
 	}
 
 
+	/**
+	 * Makes rest service call to Determination's create model scenario service.
+	 *
+	 * @param testRunData The test run data containing the authorization info to use for the request.
+	 * @param companyId The company ID of the company to create the model scenario for.
+	 * @param modelScenarioDetail The model scenario to create.
+	 *
+	 * @return The result of the rest service call.
+	 */
 	public UiModelScenarioDetail createModelScenario(final TestRun testRunData, final String companyId, final UiModelScenarioDetail modelScenarioDetail)
 	{
 		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
-		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(determinationBaseUrl).path(REST_SERVICE_URI_CREATE_MOD_SCEN);
+		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_CREATE_MOD_SCEN);
 		final Map<String, String> params = new HashMap<>();
 
-		params.put("companyId", companyId);
+		params.put(COMPANY_ID, companyId);
 
 		final URI uri = builder.buildAndExpand(params).encode().toUri();
 
@@ -319,14 +322,21 @@ public class ExternalRestClient
 	}
 
 
-	public UiModelScenarioDetail updateModelScenario(final TestRun testRunData, final String companyId, final UiModelScenarioDetail modelScenarioDetail)
+	/**
+	 * Makes rest service call to Determination's update model scenario service.
+	 *
+	 * @param testRunData The test run data containing the authorization info to use for the request.
+	 * @param companyId The company ID of the company to update the model scenario for.
+	 * @param modelScenarioDetail The model scenario data to update.
+	 */
+	public void updateModelScenario(final TestRun testRunData, final String companyId, final UiModelScenarioDetail modelScenarioDetail)
 	{
 		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
-		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(determinationBaseUrl).path(REST_SERVICE_URI_UPDATE_MOD_SCEN);
+		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_UPDATE_MOD_SCEN);
 		final Map<String, String> params = new HashMap<>();
 
-		params.put("companyId", companyId);
-		params.put("scenarioId", modelScenarioDetail.getScenarioId().toString());
+		params.put(COMPANY_ID, companyId);
+		params.put(SCENARIO_ID, modelScenarioDetail.getScenarioId().toString());
 
 		final URI uri = builder.buildAndExpand(params).encode().toUri();
 
@@ -339,16 +349,22 @@ public class ExternalRestClient
 				UiModelScenarioDetail.class
 		);
 
-		LOG.info(Logger.EVENT_UNSPECIFIED, REST_SERVICE_CALL_COMPLETE);
+		final UiModelScenarioDetail unused = responseEntity.getBody();
 
-		return responseEntity.getBody();
+		LOG.info(Logger.EVENT_UNSPECIFIED, REST_SERVICE_CALL_COMPLETE);
 	}
 
 
+	/**
+	 * Makes rest service call to Determination's delete model scenario service.
+	 *
+	 * @param testRunData The test run data containing the authorization info to use for the request.
+	 * @param modelScenarioIds The IDs of the model scenarios to delete.
+	 */
 	public void deleteModelScenario(final TestRun testRunData, final List<String> modelScenarioIds)
 	{
 		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
-		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(determinationBaseUrl).path(REST_SERVICE_URI_DELETE_MOD_SCEN);
+		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_DELETE_MOD_SCEN);
 		final URI uri = builder.build().encode().toUri();
 
 		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
@@ -378,11 +394,11 @@ public class ExternalRestClient
 	public UiScenarioResult runModelScenario(final TestRun testRunData, final String modelScenarioId, final String companyId)
 	{
 		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
-		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(determinationBaseUrl).path(REST_SERVICE_URI_RUN_MOD_SCEN);
+		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_RUN_MOD_SCEN);
 		final Map<String, String> params = new HashMap<>();
 
-		params.put("companyId", companyId);
-		params.put("scenarioId", modelScenarioId);
+		params.put(COMPANY_ID, companyId);
+		params.put(SCENARIO_ID, modelScenarioId);
 
 		final URI uri = builder.buildAndExpand(params).encode().toUri();
 
@@ -411,7 +427,7 @@ public class ExternalRestClient
 	public List<UiModelScenario> findModelScenarios(final TestRun testRunData)
 	{
 		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
-		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(determinationBaseUrl).path(REST_SERVICE_URI_FIND_MOD_SCEN);
+		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_FIND_MOD_SCEN);
 		final URI uri = builder.build().encode().toUri();
 
 		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
@@ -420,7 +436,39 @@ public class ExternalRestClient
 				uri,
 				HttpMethod.GET,
 				new HttpEntity<String>(createHttpHeaders(authorization)),
-				new ParameterizedTypeReference<List<UiModelScenario>>(){}
+				new ParameterizedTypeReference<List<UiModelScenario>>()
+				{
+				}
+		);
+
+		LOG.info(Logger.EVENT_UNSPECIFIED, REST_SERVICE_CALL_COMPLETE);
+
+		return responseEntity.getBody();
+	}
+
+
+	/**
+	 * Makes rest service call to Determination's find countries service.
+	 *
+	 * @param testRunData The test run data containing the authorization info to use for the request.
+	 *
+	 * @return The result of the rest service call.
+	 */
+	public List<ClientZone> getCountries(final TestRun testRunData)
+	{
+		final String authorization = createBasicAuthenticationString(testRunData.getServiceUser(), testRunData.getServicePassword());
+		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_FIND_COUNTRIES);
+		final URI uri = builder.build().encode().toUri();
+
+		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
+
+		final ResponseEntity<List<ClientZone>> responseEntity = restTemplate.exchange(
+				uri,
+				HttpMethod.GET,
+				new HttpEntity<String>(createHttpHeaders(authorization)),
+				new ParameterizedTypeReference<List<ClientZone>>()
+				{
+				}
 		);
 
 		LOG.info(Logger.EVENT_UNSPECIFIED, REST_SERVICE_CALL_COMPLETE);

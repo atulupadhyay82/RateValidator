@@ -30,6 +30,11 @@ public final class TestCase
 	private String productCode;
 
 	/**
+	 * Product name relating to the product code.
+	 */
+	private String productCategoryName;
+
+	/**
 	 * Tax type tested.
 	 */
 	private String taxType;
@@ -40,9 +45,9 @@ public final class TestCase
 	private String effectiveDate;
 
 	/**
-	 * Found effective Rate.
+	 * Model Scenario found effective Rate.
 	 */
-	private String effectiveRate;
+	private String modelScenarioRate;
 
 	/**
 	 * Extract accumulated rate for product, tax type, and location.

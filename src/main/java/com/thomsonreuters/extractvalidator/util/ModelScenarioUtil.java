@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.thomsonreuters.extractvalidator.dto.content.ClientZone;
 import com.thomsonreuters.extractvalidator.dto.determination.UiBasicCompany;
 import com.thomsonreuters.extractvalidator.dto.determination.UiCompany;
 import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioCalcs;
@@ -27,12 +28,15 @@ import com.thomsonreuters.extractvalidator.dto.extract.content.Product;
 
 
 /**
- * ModelScenarioUtil Description.
+ * Methods to use for building model scenarios.
  *
  * @author Matt Godsey
  */
 public final class ModelScenarioUtil
 {
+	/**
+	 * Private constructor to avoid instantiation.
+	 */
 	private ModelScenarioUtil()
 	{
 		// Private to avoid class instatiation.
@@ -45,6 +49,7 @@ public final class ModelScenarioUtil
 	 * @param company The company to use.
 	 * @param contentExtract The extract to use for building lines.
 	 * @param effectiveDate The effective date to use.
+	 * @param lineGrossAmount Gross amount to use for the line, if null use default of 1000.
 	 * @param modelScenarioName Name of the model scenario to use.
 	 *
 	 * @return A model scenario with default values, and lines built for each product in the content extract.
@@ -52,6 +57,7 @@ public final class ModelScenarioUtil
 	public static UiModelScenarioDetail buildNewModelScenario(final UiCompany company,
 															  final ContentExtract contentExtract,
 															  final LocalDateTime effectiveDate,
+															  final String lineGrossAmount,
 															  final String modelScenarioName)
 	{
 		final UiModelScenarioDetail uiModelScenarioDetail = new UiModelScenarioDetail();
@@ -60,7 +66,6 @@ public final class ModelScenarioUtil
 		final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
 		final String scenarioDate = effectiveDate.format(dateTimeFormatter);
 
-		// TODO: Change effective date to content extract effective date?
 		uiModelScenarioDetail.setEffectiveDate(scenarioDate);
 		uiModelScenarioDetail.setScenarioName(modelScenarioName);
 		uiModelScenarioDetail.setApplyCredit("N");
@@ -106,7 +111,7 @@ public final class ModelScenarioUtil
 		uiModelScenarioDetail.setOperatingLicenses(operatingLicenses);
 		uiModelScenarioDetail.setQualifiers(new LinkedList<>());
 
-		uiModelScenarioDetail.setScenarioLines(buildScenarioLinesByProduct(contentExtract));
+		uiModelScenarioDetail.setScenarioLines(buildScenarioLinesByProduct(contentExtract, lineGrossAmount));
 
 		return uiModelScenarioDetail;
 	}
@@ -118,10 +123,11 @@ public final class ModelScenarioUtil
 	 * DEVELOPERS NOTE: Currently only modeling a sales tax transaction with ship from and ship to in the same location. Also only US at the moment.
 	 *
 	 * @param address The address to use.
+	 * @param countryList List of countries with two character codes.
 	 *
 	 * @return A set of model scenario locations.
 	 */
-	public static List<UiModelScenarioLocation> buildLocations(final Address address)
+	public static List<UiModelScenarioLocation> buildLocations(final Address address, final List<ClientZone> countryList)
 	{
 		final List<UiModelScenarioLocation> locations = new LinkedList<>();
 		final List<String> locationTypes = Arrays.asList("SHIP_TO", "SHIP_FROM", "SELLER_PRIMARY", "BUYER_PRIMARY", "ORDER_ACCEPTANCE", "ORDER_ORIGIN", "SUPPLY", "BILL_TO", "MIDDLEMAN");
@@ -132,8 +138,14 @@ public final class ModelScenarioUtil
 
 			location.setLocationType(locationType);
 
-			// TODO: Copy country lookup from CM to get 2 char codes here for country name.
-			location.setCountry("US");
+			for (final ClientZone country : countryList)
+			{
+				if (country.getName().equals(address.getCountry()))
+				{
+					location.setCountry(country.getChar2Code());
+					break;
+				}
+			}
 
 			if (locationType.equals("SHIP_FROM") || locationType.equals("SHIP_TO"))
 			{
@@ -157,12 +169,14 @@ public final class ModelScenarioUtil
 	 * Build a list of model scenario lines for all products in the extract. Using a default gross amount of 1000.
 	 *
 	 * @param contentExtract The content extract data.
+	 * @param lineGrossAmount Gross amount to use for the line, default to 1000 if null.
 	 *
 	 * @return The list of lines to use in the model scenario.
 	 */
-	private static List<UiModelScenarioLine> buildScenarioLinesByProduct(final ContentExtract contentExtract)
+	private static List<UiModelScenarioLine> buildScenarioLinesByProduct(final ContentExtract contentExtract, final String lineGrossAmount)
 	{
 		final List<UiModelScenarioLine> scenarioLines = new LinkedList<>();
+		final BigDecimal lineGrossAmountValue = null == lineGrossAmount ? new BigDecimal(1000) : new BigDecimal(Long.parseLong(lineGrossAmount));
 
 		Long lineNumberCounter = 1L;
 
@@ -171,7 +185,7 @@ public final class ModelScenarioUtil
 			final UiModelScenarioLine line = new UiModelScenarioLine();
 
 			line.setDelete(false);
-			line.setGrossAmount(new BigDecimal(1000));
+			line.setGrossAmount(lineGrossAmountValue);
 			line.setLineNumber(lineNumberCounter++);
 			line.setQuantity(new BigDecimal(1));
 			line.setProductCode(product.getName());

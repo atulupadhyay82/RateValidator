@@ -1,8 +1,6 @@
 package com.thomsonreuters.extractvalidator.dto;
 
 
-import java.util.List;
-
 import lombok.Data;
 import lombok.NonNull;
 
@@ -63,11 +61,6 @@ public final class TestRun
 	private String servicePassword;
 
 	/**
-	 * Results of model scenario runs compared with content extract rates.
-	 */
-	private List<TestCase> testCases;
-
-	/**
 	 * Gross amount to use for the line. If null will be ignored.
 	 */
 	private String lineGrossAmount;
@@ -87,5 +80,5 @@ public final class TestRun
 	 * Flag to use for cleaning up the model scenario before processing if the name is the same as provided in model scenario name above.
 	 */
 	@NonNull
-	private boolean cleanupModelScenario;
+	private Boolean cleanupModelScenario;
 }

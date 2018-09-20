@@ -52,6 +52,9 @@ public final class LocationTreatmentBuilder
 		locationTreatmentData.setProductJurisdictionData(new LinkedList<>());
 		locationTreatmentData.setAddress(address);
 
+		// Process by grouping rule, but extract data doesn't update after grouping is changed until staging is run. The extract will show the new grouping
+		// selection, but the data will not have been updated. So base decision on JurisdictionAuthorities which relates to grouping by Authority, or Jurisdiction
+		// Treatment Mapping which relates to grouping by tax type.
 		if (null == contentExtract.getJurisdictionTreatmentMappings())
 		{
 			buildLocationTreatmentDataByAuthority(locationTreatmentData, contentExtract);
@@ -149,16 +152,17 @@ public final class LocationTreatmentBuilder
 
 			for (final JurisdictionTreatmentMapping jurisdictionTreatmentMapping : jurisdictionTreatmentMappings)
 			{
-				final JurisdictionData jurisdictionData = new JurisdictionData();
-
-				jurisdictionData.setJurisdictionKey(Long.parseLong(jurisdictionTreatmentMapping.getJurisdictionKey()));
-				jurisdictionData.setJurisdictionTreatmentData(new LinkedList<>());
-
 				for (final TreatmentGroupTreatment treatmentGroupTreatment : contentExtract.getTreatmentGroupTreatments())
 				{
-					if (jurisdictionTreatmentMapping.getTreatmentGroupKey().equals(treatmentGroupTreatment.getTreatmentGroupKey())
-						&& jurisdictionTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString()))
+					if (jurisdictionTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString())
+						&& jurisdictionTreatmentMapping.getTreatmentGroupKey().equals(treatmentGroupTreatment.getTreatmentGroupKey())
+						&& jurisdictionTreatmentMapping.getTaxType().equals("SA"))
 					{
+						final JurisdictionData jurisdictionData = new JurisdictionData();
+
+						jurisdictionData.setJurisdictionKey(Long.parseLong(jurisdictionTreatmentMapping.getJurisdictionKey()));
+						jurisdictionData.setJurisdictionTreatmentData(new LinkedList<>());
+
 						final List<Treatment> treatments = new LinkedList<>();
 						final TreatmentData treatmentData = new TreatmentData();
 
@@ -169,11 +173,10 @@ public final class LocationTreatmentBuilder
 
 						jurisdictionData.getJurisdictionTreatmentData().add(treatmentData);
 
+						productJurisdictionData.getJurisdictionData().add(jurisdictionData);
 						break;
 					}
 				}
-
-				productJurisdictionData.getJurisdictionData().add(jurisdictionData);
 			}
 
 			locationTreatmentData.getProductJurisdictionData().add(productJurisdictionData);
@@ -222,5 +225,32 @@ public final class LocationTreatmentBuilder
 				break;
 			}
 		}
+	}
+
+
+	private void test()
+	{
+//		for (final JurisdictionTreatmentMapping jurisdictionTreatmentMapping : jurisdictionTreatmentMappings)
+//		{
+//			if (jurisdictionTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString()))
+//			{
+//				final JurisdictionData jurisdictionData = new JurisdictionData();
+//				final List<Treatment> treatments = new LinkedList<>();
+//				final TreatmentData treatmentData = new TreatmentData();
+//
+//				jurisdictionData.setJurisdictionKey(Long.parseLong(jurisdictionTreatmentMapping.getJurisdictionKey()));
+//				jurisdictionData.setJurisdictionTreatmentData(new LinkedList<>());
+//
+//				treatmentData.setFromDate(jurisdictionTreatmentMapping.getEffectiveDate().getFrom());
+//				treatmentData.setToDate(jurisdictionTreatmentMapping.getEffectiveDate().getTo());
+//				extractTreatmentsFromJurisdiction(contentExtract, treatments, jurisdictionTreatmentMapping);
+//				treatmentData.setTreatments(treatments);
+//
+//				jurisdictionData.getJurisdictionTreatmentData().add(treatmentData);
+//				productJurisdictionData.getJurisdictionData().add(jurisdictionData);
+//
+//				break;
+//			}
+//		}
 	}
 }

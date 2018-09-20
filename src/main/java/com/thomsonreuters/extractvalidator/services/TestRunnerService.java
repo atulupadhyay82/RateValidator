@@ -2,8 +2,12 @@ package com.thomsonreuters.extractvalidator.services;
 
 
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -20,6 +24,8 @@ import org.springframework.stereotype.Service;
 import com.thomsonreuters.extractvalidator.dto.RunResults;
 import com.thomsonreuters.extractvalidator.dto.TestCase;
 import com.thomsonreuters.extractvalidator.dto.TestRun;
+import com.thomsonreuters.extractvalidator.dto.content.ClientZone;
+import com.thomsonreuters.extractvalidator.dto.determination.UiAuthorityTaxDetail;
 import com.thomsonreuters.extractvalidator.dto.determination.UiCompany;
 import com.thomsonreuters.extractvalidator.dto.determination.UiCompanyList;
 import com.thomsonreuters.extractvalidator.dto.determination.UiLineTaxDetail;
@@ -31,6 +37,7 @@ import com.thomsonreuters.extractvalidator.dto.extract.TestAddress;
 import com.thomsonreuters.extractvalidator.dto.extract.content.Address;
 import com.thomsonreuters.extractvalidator.dto.extract.content.AuthorityData;
 import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
+import com.thomsonreuters.extractvalidator.dto.extract.content.JurisdictionAuthority;
 import com.thomsonreuters.extractvalidator.dto.extract.content.JurisdictionData;
 import com.thomsonreuters.extractvalidator.dto.extract.content.LocationTreatmentData;
 import com.thomsonreuters.extractvalidator.dto.extract.content.ProductAuthorityData;
@@ -41,10 +48,11 @@ import com.thomsonreuters.extractvalidator.dto.extract.content.TreatmentData;
 import com.thomsonreuters.extractvalidator.util.ExternalRestClient;
 import com.thomsonreuters.extractvalidator.util.LocationTreatmentBuilder;
 import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
+import com.thomsonreuters.extractvalidator.util.StringUtil;
 
 
 /**
- * TestRunnerService Description.
+ * Service to manage the test run, all parts of the test will be managed from here.
  *
  * @author Matt Godsey
  */
@@ -74,7 +82,7 @@ public final class TestRunnerService
 	/**
 	 * Double value to multiply the rate from the model scenario by to match up with the rates from the extract.
 	 */
-	private static final double RATE_MULTIPLIER = .01;
+	private static final double RATE_MULTIPLIER = 100.0;
 
 	/**
 	 * The rest client to use when making REST calls to Content Extract endpoints or Determination Endpoints.
@@ -111,7 +119,7 @@ public final class TestRunnerService
 		final JsonObject contentExtract = (JsonObject) externalRestClient.findContentExtract(testRunData, false);
 
 
-		return new RunResults(testRunData.getTestCases(), testRunData.getTestRunNumber());
+		return null; // new RunResults(testRunData.getTestCases(), testRunData.getTestRunNumber());
 	}
 
 
@@ -125,10 +133,6 @@ public final class TestRunnerService
 	public RunResults staticRunResults(final TestRun testRunData)
 	{
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Starting test run for company: " + testRunData.getTestCompanyName());
-
-		externalRestClient.setDeterminationBaseUrl(testRunData);
-		externalRestClient.setExtractBaseUrl(testRunData);
-
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Retrieving extract for company: " + testRunData.getTestCompanyName());
 		final ContentExtract extract = (ContentExtract) externalRestClient.findContentExtract(testRunData, true);
 		final List<TestCase> testCases = new LinkedList<>();
@@ -154,7 +158,7 @@ public final class TestRunnerService
 			try
 			{
 				// If cleanup model scenario is set, check to see if a model scenario with the same name did not get deleted in a previous run. Find it and delete it.
-				if (testRunData.isCleanupModelScenario())
+				if (testRunData.getCleanupModelScenario())
 				{
 					cleanupOldModelScenario(testRunData, testCompany);
 				}
@@ -241,8 +245,17 @@ public final class TestRunnerService
 													   final List<TestCase> testCases)
 	{
 		final List<String> scenarioIds = new LinkedList<>();
-		final LocalDateTime effectiveDate = LocalDateTime.now();
-		final UiModelScenarioDetail uiModelScenarioDetail = ModelScenarioUtil.buildNewModelScenario(company, contentExtract, effectiveDate, testRunData.getModelScenarioName());
+
+		// Set effective date to now, unless effective date passed in is not null.
+		final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+		final LocalDate parsedDate = null == testRunData.getEffectiveDate() ? LocalDate.now() : LocalDate.parse(testRunData.getEffectiveDate(), formatter);
+		final LocalDateTime effectiveDate = parsedDate.atStartOfDay();
+		final List<ClientZone> countryList = externalRestClient.getCountries(testRunData);
+		final UiModelScenarioDetail uiModelScenarioDetail = ModelScenarioUtil.buildNewModelScenario(company,
+																									contentExtract,
+																									effectiveDate,
+																									testRunData.getLineGrossAmount(),
+																									testRunData.getModelScenarioName());
 
 		UiModelScenarioDetail newModelScenario;
 		int scenarioCounter = 1;
@@ -255,7 +268,7 @@ public final class TestRunnerService
 			if (!locationTreatmentData.getProductAuthorityData().isEmpty() || !locationTreatmentData.getProductJurisdictionData().isEmpty())
 			{
 				LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building new scenario for Address: " + address.toString());
-				uiModelScenarioDetail.setLocationList(ModelScenarioUtil.buildLocations(address));
+				uiModelScenarioDetail.setLocationList(ModelScenarioUtil.buildLocations(address, countryList));
 
 				LOGGER.info(Logger.EVENT_UNSPECIFIED, "Processing scenario run: " + scenarioCounter++);
 				if (null == uiModelScenarioDetail.getScenarioId())
@@ -316,7 +329,7 @@ public final class TestRunnerService
 				{
 					final TestCase testCase = new TestCase();
 
-					buildTestCase(extractEntry, testCase, scenarioResult, scenarioEntry, effectiveDate, locationTreatmentData.getAddress(), scenarioLineGrossAmount);
+					buildTestCase(extractEntry, testCase, scenarioResult, scenarioEntry, effectiveDate, locationTreatmentData, scenarioLineGrossAmount);
 					testCases.add(testCase);
 
 					break;
@@ -346,12 +359,14 @@ public final class TestRunnerService
 			{
 				if (lineTaxDetail.getLineNumber().compareTo(scenarioLine.getLineNumber()) == 0)
 				{
-					// Round the effective rate returned to 3 decimal places to match the extract.
-					final DecimalFormat decimalFormat = new DecimalFormat("#.#####");
-					final double shiftedRate = (RATE_MULTIPLIER * Double.parseDouble(lineTaxDetail.getEffectiveTaxRate()));
-					final double roundedRate = Double.parseDouble(decimalFormat.format(shiftedRate));
+					BigDecimal accumulatedTaxRate = BigDecimal.valueOf(0);
 
-					productRateMap.put(scenarioLine.getProductCode(), BigDecimal.valueOf(roundedRate));
+					for (final UiAuthorityTaxDetail authorityTaxDetail : lineTaxDetail.getAuthorityTaxDetails())
+					{
+						accumulatedTaxRate = accumulatedTaxRate.add(BigDecimal.valueOf(Double.parseDouble(authorityTaxDetail.getTaxRate())));
+					}
+
+					productRateMap.put(scenarioLine.getProductCode(), accumulatedTaxRate);
 					break;
 				}
 			}
@@ -396,7 +411,10 @@ public final class TestRunnerService
 					}
 				}
 
-				scenarioProductRateMap.put(productAuthorityData.getProduct().getName(), accumulatedRate);
+				// Shift left by 2 decimal places.
+				final BigDecimal shiftedRate = accumulatedRate.multiply(BigDecimal.valueOf(RATE_MULTIPLIER));
+
+				scenarioProductRateMap.put(productAuthorityData.getProduct().getName(), shiftedRate);
 			}
 		}
 		else
@@ -419,7 +437,10 @@ public final class TestRunnerService
 					}
 				}
 
-				scenarioProductRateMap.put(productJurisdictionData.getProduct().getName(), accumulatedRate);
+				// Shift left by 2 decimal.
+				final BigDecimal shiftedRate = accumulatedRate.multiply(BigDecimal.valueOf(RATE_MULTIPLIER));
+
+				scenarioProductRateMap.put(productJurisdictionData.getProduct().getName(), shiftedRate);
 			}
 		}
 
@@ -472,7 +493,7 @@ public final class TestRunnerService
 	 * @param scenarioResult The calculate scenario result.
 	 * @param scenarioEntry The product and rate data from the scenario.
 	 * @param effectiveDate The effective date used for the calculation and the treatment assignment.
-	 * @param address The address used for this test.
+	 * @param locationTreatmentData The location treatment data accumulated from the extract and holds the address and products to apply to the test case.
 	 * @param scenarioGrossAmount Gross amount of the first line for the model scenario. All lines should have the same gross amount.
 	 */
 	private void buildTestCase(final Map.Entry<String, BigDecimal> extractEntry,
@@ -480,26 +501,51 @@ public final class TestRunnerService
 							   final UiScenarioResult scenarioResult,
 							   final Map.Entry<String, BigDecimal> scenarioEntry,
 							   final LocalDateTime effectiveDate,
-							   final Address address,
+							   final LocationTreatmentData locationTreatmentData,
 							   final String scenarioGrossAmount)
 	{
 		final BigDecimal rate = scenarioEntry.getValue();
 		final BigDecimal accumulatedRate = extractEntry.getValue();
 
+		// Handle grouping by authority (use ProductAuthorityData) or by tax type (use ProductJurisdictionData).
+		if (locationTreatmentData.getProductJurisdictionData().isEmpty())
+		{
+			for (final ProductAuthorityData productAuthorityData : locationTreatmentData.getProductAuthorityData())
+			{
+				if (productAuthorityData.getProduct().getName().equals(extractEntry.getKey()))
+				{
+					testCase.setProductCategoryName(productAuthorityData.getProduct().getProductCategory());
+					break;
+				}
+			}
+		}
+		else if (locationTreatmentData.getProductAuthorityData().isEmpty())
+		{
+			for (final ProductJurisdictionData productJurisdictionData : locationTreatmentData.getProductJurisdictionData())
+			{
+				if (productJurisdictionData.getProduct().getName().equals(extractEntry.getKey()))
+				{
+					testCase.setProductCategoryName(productJurisdictionData.getProduct().getProductCategory());
+					break;
+				}
+			}
+		}
+
 		testCase.setProductCode(extractEntry.getKey());
 		testCase.setEffectiveDate(effectiveDate.toString());
-		testCase.setEffectiveRate(scenarioEntry.getValue().toString());
+		testCase.setModelScenarioRate(scenarioEntry.getValue().toString());
 		testCase.setAccumulatedRate(extractEntry.getValue().toString());
 
 		final TestAddress testAddress = new TestAddress();
 
-		testAddress.setCity(address.getCity());
-		testAddress.setCountry(address.getCountry());
-		testAddress.setDistrict(address.getDistrict());
-		testAddress.setGeocode(address.getGeocode());
-		testAddress.setPostalCode(address.getPostalCode());
-		testAddress.setCounty(address.getCounty());
-		testAddress.setProvince(address.getProvince());
+		testAddress.setCity(locationTreatmentData.getAddress().getCity());
+		testAddress.setCountry(locationTreatmentData.getAddress().getCountry());
+		testAddress.setDistrict(locationTreatmentData.getAddress().getDistrict());
+		testAddress.setGeocode(locationTreatmentData.getAddress().getGeocode());
+		testAddress.setPostalCode(locationTreatmentData.getAddress().getPostalCode());
+		testAddress.setCounty(locationTreatmentData.getAddress().getCounty());
+		testAddress.setProvince(locationTreatmentData.getAddress().getProvince());
+		testAddress.setState(locationTreatmentData.getAddress().getState());
 
 		testCase.setAddress(testAddress);
 
