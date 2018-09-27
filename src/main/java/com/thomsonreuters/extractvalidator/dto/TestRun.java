@@ -1,6 +1,8 @@
 package com.thomsonreuters.extractvalidator.dto;
 
 
+import java.util.List;
+
 import lombok.Data;
 import lombok.NonNull;
 
@@ -61,9 +63,9 @@ public final class TestRun
 	private String servicePassword;
 
 	/**
-	 * Gross amount to use for the line. If null will be ignored.
+	 * List of different gross amounts to use for the line. If null a default value will be used.
 	 */
-	private String lineGrossAmount;
+	private List<String> lineGrossAmounts;
 
 	/**
 	 * Effective date to use for model scenario calculations and rate comparisons.

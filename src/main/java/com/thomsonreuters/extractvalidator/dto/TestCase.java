@@ -55,6 +55,11 @@ public final class TestCase
 	private String accumulatedRate;
 
 	/**
+	 * Gross amount of the test case.
+	 */
+	private String grossAmount;
+
+	/**
 	 * Address for this test case.
 	 */
 	private TestAddress address;

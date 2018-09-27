@@ -2,19 +2,16 @@ package com.thomsonreuters.extractvalidator.services;
 
 
 import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
-import javax.json.JsonObject;
+import java.util.Set;
 
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Logger;
@@ -37,7 +34,6 @@ import com.thomsonreuters.extractvalidator.dto.extract.TestAddress;
 import com.thomsonreuters.extractvalidator.dto.extract.content.Address;
 import com.thomsonreuters.extractvalidator.dto.extract.content.AuthorityData;
 import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
-import com.thomsonreuters.extractvalidator.dto.extract.content.JurisdictionAuthority;
 import com.thomsonreuters.extractvalidator.dto.extract.content.JurisdictionData;
 import com.thomsonreuters.extractvalidator.dto.extract.content.LocationTreatmentData;
 import com.thomsonreuters.extractvalidator.dto.extract.content.ProductAuthorityData;
@@ -48,7 +44,6 @@ import com.thomsonreuters.extractvalidator.dto.extract.content.TreatmentData;
 import com.thomsonreuters.extractvalidator.util.ExternalRestClient;
 import com.thomsonreuters.extractvalidator.util.LocationTreatmentBuilder;
 import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
-import com.thomsonreuters.extractvalidator.util.StringUtil;
 
 
 /**
@@ -108,22 +103,6 @@ public final class TestRunnerService
 
 
 	/**
-	 * Test run method to handle using dynamic JSON objects.
-	 *
-	 * @param testRunData The test run data provided.
-	 *
-	 * @return A set of test cases matching the model scenario calculations.
-	 */
-	public RunResults dynamicRunTest(final TestRun testRunData)
-	{
-		final JsonObject contentExtract = (JsonObject) externalRestClient.findContentExtract(testRunData, false);
-
-
-		return null; // new RunResults(testRunData.getTestCases(), testRunData.getTestRunNumber());
-	}
-
-
-	/**
 	 * Execute the validation using java classes for the extract and model scenario data.
 	 *
 	 * @param testRunData The test run data provided.
@@ -140,7 +119,6 @@ public final class TestRunnerService
 
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Retrieving list of companies from Determination to get the company ID.");
 		final UiCompanyList companies = externalRestClient.findCompanies(testRunData);
-
 		final UiCompany testCompany = findTestCompany(testRunData, companies);
 
 		if (null == testCompany)
@@ -251,10 +229,11 @@ public final class TestRunnerService
 		final LocalDate parsedDate = null == testRunData.getEffectiveDate() ? LocalDate.now() : LocalDate.parse(testRunData.getEffectiveDate(), formatter);
 		final LocalDateTime effectiveDate = parsedDate.atStartOfDay();
 		final List<ClientZone> countryList = externalRestClient.getCountries(testRunData);
+		final List<String> lineGrossAmounts = null == testRunData.getLineGrossAmounts() ? new LinkedList<>() : testRunData.getLineGrossAmounts();
 		final UiModelScenarioDetail uiModelScenarioDetail = ModelScenarioUtil.buildNewModelScenario(company,
 																									contentExtract,
 																									effectiveDate,
-																									testRunData.getLineGrossAmount(),
+																									lineGrossAmounts,
 																									testRunData.getModelScenarioName());
 
 		UiModelScenarioDetail newModelScenario;
@@ -316,9 +295,16 @@ public final class TestRunnerService
 													 final LocationTreatmentData locationTreatmentData,
 													 final LocalDateTime effectiveDate)
 	{
-		final String scenarioLineGrossAmount = scenarioResult.getInvoiceTaxDetail().getLineTaxDetails().get(0).getGrossAmount();
+		final Set<String> lineGrossAmounts = new HashSet<>();
+
+		for (final UiLineTaxDetail lineDetail : scenarioResult.getInvoiceTaxDetail().getLineTaxDetails())
+		{
+			lineGrossAmounts.add(lineDetail.getGrossAmount());
+		}
+
 		final Map<String, BigDecimal> scenarioProductRateMap = buildScenarioProductRateMap(scenarioResult, modelScenarioDetail.getScenarioLines());
-		final Map<String, BigDecimal> extractProductRateMap = buildExtractProductRateMap(locationTreatmentData, effectiveDate, scenarioLineGrossAmount);
+		final Map<String, BigDecimal> extractProductRateMap = buildExtractProductRateMap(locationTreatmentData, effectiveDate, lineGrossAmounts);
+
 		final List<TestCase> testCases = new LinkedList<>();
 
 		for (final Map.Entry<String, BigDecimal> scenarioEntry : scenarioProductRateMap.entrySet())
@@ -329,7 +315,7 @@ public final class TestRunnerService
 				{
 					final TestCase testCase = new TestCase();
 
-					buildTestCase(extractEntry, testCase, scenarioResult, scenarioEntry, effectiveDate, locationTreatmentData, scenarioLineGrossAmount);
+					buildTestCase(extractEntry, testCase, scenarioResult, scenarioEntry, effectiveDate, locationTreatmentData);
 					testCases.add(testCase);
 
 					break;
@@ -366,7 +352,7 @@ public final class TestRunnerService
 						accumulatedTaxRate = accumulatedTaxRate.add(BigDecimal.valueOf(Double.parseDouble(authorityTaxDetail.getTaxRate())));
 					}
 
-					productRateMap.put(scenarioLine.getProductCode(), accumulatedTaxRate);
+					productRateMap.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGrossAmount(), accumulatedTaxRate);
 					break;
 				}
 			}
@@ -381,13 +367,13 @@ public final class TestRunnerService
 	 *
 	 * @param locationTreatmentData The location treatment data containing the products, authorities, and rates from the extract for a given jurisdiction.
 	 * @param effectiveDate The effective date of the calculation.
-	 * @param scenarioGrossAmount The gross amount of the scenario line used to determine the correct tier rates.
+	 * @param lineGrossAmounts The list of gross amount from the scenario line used to determine the correct tier rates.
 	 *
 	 * @return A map of product to rate key pairs.
 	 */
 	private Map<String, BigDecimal> buildExtractProductRateMap(final LocationTreatmentData locationTreatmentData,
 															   final LocalDateTime effectiveDate,
-															   final String scenarioGrossAmount)
+															   final Set<String> lineGrossAmounts)
 	{
 		final Map<String, BigDecimal> scenarioProductRateMap = new HashMap<>();
 
@@ -395,52 +381,58 @@ public final class TestRunnerService
 		{
 			for (final ProductAuthorityData productAuthorityData : locationTreatmentData.getProductAuthorityData())
 			{
-				BigDecimal accumulatedRate = new BigDecimal(0);
-
-				for (final AuthorityData authorityData : productAuthorityData.getAuthorityData())
+				for (final String lineGrossAmount : lineGrossAmounts)
 				{
-					for (final TreatmentData authorityTreatmentData : authorityData.getAuthorityTreatmentData())
-					{
-						final LocalDateTime fromDate = authorityTreatmentData.getFromDate();
-						final LocalDateTime toDate = authorityTreatmentData.getToDate();
+					BigDecimal accumulatedRate = new BigDecimal(0);
 
-						if (effectiveDate.isAfter(fromDate) && (null == toDate || (effectiveDate.isBefore(toDate))))
+					for (final AuthorityData authorityData : productAuthorityData.getAuthorityData())
+					{
+						for (final TreatmentData authorityTreatmentData : authorityData.getAuthorityTreatmentData())
 						{
-							accumulatedRate = accumulatedRate.add(calculateAccumulatedRate(authorityTreatmentData.getTreatments(), scenarioGrossAmount));
+							final LocalDateTime fromDate = authorityTreatmentData.getFromDate();
+							final LocalDateTime toDate = authorityTreatmentData.getToDate();
+
+							if (effectiveDate.isAfter(fromDate) && (null == toDate || (effectiveDate.isBefore(toDate))))
+							{
+								accumulatedRate = accumulatedRate.add(calculateAccumulatedRate(authorityTreatmentData.getTreatments(), lineGrossAmount));
+							}
 						}
 					}
+
+					// Shift left by 2 decimal places.
+					final BigDecimal shiftedRate = accumulatedRate.multiply(BigDecimal.valueOf(RATE_MULTIPLIER));
+
+					scenarioProductRateMap.put(productAuthorityData.getProduct().getName() + ":" + lineGrossAmount, shiftedRate);
 				}
-
-				// Shift left by 2 decimal places.
-				final BigDecimal shiftedRate = accumulatedRate.multiply(BigDecimal.valueOf(RATE_MULTIPLIER));
-
-				scenarioProductRateMap.put(productAuthorityData.getProduct().getName(), shiftedRate);
 			}
 		}
 		else
 		{
 			for (final ProductJurisdictionData productJurisdictionData : locationTreatmentData.getProductJurisdictionData())
 			{
-				BigDecimal accumulatedRate = new BigDecimal(0);
-
-				for (final JurisdictionData jurisdictionData : productJurisdictionData.getJurisdictionData())
+				for (final String lineGrossAmount : lineGrossAmounts)
 				{
-					for (final TreatmentData treatmentData : jurisdictionData.getJurisdictionTreatmentData())
-					{
-						final LocalDateTime fromDate = treatmentData.getFromDate();
-						final LocalDateTime toDate = treatmentData.getToDate();
+					BigDecimal accumulatedRate = new BigDecimal(0);
 
-						if (effectiveDate.isAfter(fromDate) && (null == toDate || (effectiveDate.isBefore(toDate))))
+					for (final JurisdictionData jurisdictionData : productJurisdictionData.getJurisdictionData())
+					{
+						for (final TreatmentData treatmentData : jurisdictionData.getJurisdictionTreatmentData())
 						{
-							accumulatedRate = accumulatedRate.add(calculateAccumulatedRate(treatmentData.getTreatments(), scenarioGrossAmount));
+							final LocalDateTime fromDate = treatmentData.getFromDate();
+							final LocalDateTime toDate = treatmentData.getToDate();
+
+							if (effectiveDate.isAfter(fromDate) && (null == toDate || (effectiveDate.isBefore(toDate))))
+							{
+								accumulatedRate = accumulatedRate.add(calculateAccumulatedRate(treatmentData.getTreatments(), lineGrossAmount));
+							}
 						}
 					}
+
+					// Shift left by 2 decimal.
+					final BigDecimal shiftedRate = accumulatedRate.multiply(BigDecimal.valueOf(RATE_MULTIPLIER));
+
+					scenarioProductRateMap.put(productJurisdictionData.getProduct().getName() + ":" + lineGrossAmount, shiftedRate);
 				}
-
-				// Shift left by 2 decimal.
-				final BigDecimal shiftedRate = accumulatedRate.multiply(BigDecimal.valueOf(RATE_MULTIPLIER));
-
-				scenarioProductRateMap.put(productJurisdictionData.getProduct().getName(), shiftedRate);
 			}
 		}
 
@@ -494,25 +486,26 @@ public final class TestRunnerService
 	 * @param scenarioEntry The product and rate data from the scenario.
 	 * @param effectiveDate The effective date used for the calculation and the treatment assignment.
 	 * @param locationTreatmentData The location treatment data accumulated from the extract and holds the address and products to apply to the test case.
-	 * @param scenarioGrossAmount Gross amount of the first line for the model scenario. All lines should have the same gross amount.
 	 */
 	private void buildTestCase(final Map.Entry<String, BigDecimal> extractEntry,
 							   final TestCase testCase,
 							   final UiScenarioResult scenarioResult,
 							   final Map.Entry<String, BigDecimal> scenarioEntry,
 							   final LocalDateTime effectiveDate,
-							   final LocationTreatmentData locationTreatmentData,
-							   final String scenarioGrossAmount)
+							   final LocationTreatmentData locationTreatmentData)
 	{
 		final BigDecimal rate = scenarioEntry.getValue();
 		final BigDecimal accumulatedRate = extractEntry.getValue();
+		final int splitIndex = extractEntry.getKey().indexOf(':');
+		final String productCode = extractEntry.getKey().substring(0, splitIndex);
+		final String grossAmount = extractEntry.getKey().substring(splitIndex + 1);
 
 		// Handle grouping by authority (use ProductAuthorityData) or by tax type (use ProductJurisdictionData).
 		if (locationTreatmentData.getProductJurisdictionData().isEmpty())
 		{
 			for (final ProductAuthorityData productAuthorityData : locationTreatmentData.getProductAuthorityData())
 			{
-				if (productAuthorityData.getProduct().getName().equals(extractEntry.getKey()))
+				if (productAuthorityData.getProduct().getName().equals(productCode))
 				{
 					testCase.setProductCategoryName(productAuthorityData.getProduct().getProductCategory());
 					break;
@@ -523,7 +516,7 @@ public final class TestRunnerService
 		{
 			for (final ProductJurisdictionData productJurisdictionData : locationTreatmentData.getProductJurisdictionData())
 			{
-				if (productJurisdictionData.getProduct().getName().equals(extractEntry.getKey()))
+				if (productJurisdictionData.getProduct().getName().equals(productCode))
 				{
 					testCase.setProductCategoryName(productJurisdictionData.getProduct().getProductCategory());
 					break;
@@ -531,10 +524,11 @@ public final class TestRunnerService
 			}
 		}
 
-		testCase.setProductCode(extractEntry.getKey());
+		testCase.setProductCode(productCode);
 		testCase.setEffectiveDate(effectiveDate.toString());
 		testCase.setModelScenarioRate(scenarioEntry.getValue().toString());
 		testCase.setAccumulatedRate(extractEntry.getValue().toString());
+		testCase.setGrossAmount(grossAmount);
 
 		final TestAddress testAddress = new TestAddress();
 
@@ -562,7 +556,7 @@ public final class TestRunnerService
 		else if (accumulatedRate.compareTo(rate) == 0)
 		{
 			testCase.setTestResult(PASSED);
-			testCase.setMessage("Effective rate is: " + rate + " for Gross Amount: " + scenarioGrossAmount);
+			testCase.setMessage("Effective rate is: " + rate + " for Gross Amount: " + grossAmount);
 		}
 		else if (accumulatedRate.equals(BigDecimal.valueOf(0)) && !rate.equals(BigDecimal.valueOf(0)))
 		{

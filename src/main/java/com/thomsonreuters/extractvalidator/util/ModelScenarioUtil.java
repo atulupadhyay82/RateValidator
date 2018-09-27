@@ -49,7 +49,7 @@ public final class ModelScenarioUtil
 	 * @param company The company to use.
 	 * @param contentExtract The extract to use for building lines.
 	 * @param effectiveDate The effective date to use.
-	 * @param lineGrossAmount Gross amount to use for the line, if null use default of 1000.
+	 * @param lineGrossAmounts A list of gross amount to use for the line, if null use default of 1000.
 	 * @param modelScenarioName Name of the model scenario to use.
 	 *
 	 * @return A model scenario with default values, and lines built for each product in the content extract.
@@ -57,7 +57,7 @@ public final class ModelScenarioUtil
 	public static UiModelScenarioDetail buildNewModelScenario(final UiCompany company,
 															  final ContentExtract contentExtract,
 															  final LocalDateTime effectiveDate,
-															  final String lineGrossAmount,
+															  final List<String> lineGrossAmounts,
 															  final String modelScenarioName)
 	{
 		final UiModelScenarioDetail uiModelScenarioDetail = new UiModelScenarioDetail();
@@ -92,9 +92,15 @@ public final class ModelScenarioUtil
 		uiModelScenarioDetail.setPostalCodeExemption(new UiModelScenarioExemptions());
 		uiModelScenarioDetail.setGeoCodeExemption(new UiModelScenarioExemptions());
 		uiModelScenarioDetail.setCustomDocumentFields(new LinkedList<>());
-		uiModelScenarioDetail.setEstbBuyer(new UiModelScenarioEstInfo());
+
+		final UiModelScenarioEstInfo establishments = new UiModelScenarioEstInfo();
+
+		establishments.setIsShipTo(true);
+		establishments.setIsShipFrom(true);
+
+		uiModelScenarioDetail.setEstbBuyer(establishments);
 		uiModelScenarioDetail.setEstbMiddleman(new UiModelScenarioEstInfo());
-		uiModelScenarioDetail.setEstbSeller(new UiModelScenarioEstInfo());
+		uiModelScenarioDetail.setEstbSeller(establishments);
 		uiModelScenarioDetail.setModelScenarioCalcs(new UiModelScenarioCalcs());
 		uiModelScenarioDetail.setModelScenarioOverrides(new UiModelScenarioOverrides());
 		uiModelScenarioDetail.setModelScenarioReports(new UiModelScenarioReports());
@@ -111,7 +117,7 @@ public final class ModelScenarioUtil
 		uiModelScenarioDetail.setOperatingLicenses(operatingLicenses);
 		uiModelScenarioDetail.setQualifiers(new LinkedList<>());
 
-		uiModelScenarioDetail.setScenarioLines(buildScenarioLinesByProduct(contentExtract, lineGrossAmount));
+		uiModelScenarioDetail.setScenarioLines(buildScenarioLinesByProduct(contentExtract, lineGrossAmounts));
 
 		return uiModelScenarioDetail;
 	}
@@ -169,41 +175,56 @@ public final class ModelScenarioUtil
 	 * Build a list of model scenario lines for all products in the extract. Using a default gross amount of 1000.
 	 *
 	 * @param contentExtract The content extract data.
-	 * @param lineGrossAmount Gross amount to use for the line, default to 1000 if null.
+	 * @param lineGrossAmounts A list of gross amounts to use for the line, default to 1000 if null.
 	 *
 	 * @return The list of lines to use in the model scenario.
 	 */
-	private static List<UiModelScenarioLine> buildScenarioLinesByProduct(final ContentExtract contentExtract, final String lineGrossAmount)
+	private static List<UiModelScenarioLine> buildScenarioLinesByProduct(final ContentExtract contentExtract, final List<String> lineGrossAmounts)
 	{
 		final List<UiModelScenarioLine> scenarioLines = new LinkedList<>();
-		final BigDecimal lineGrossAmountValue = null == lineGrossAmount ? new BigDecimal(1000) : new BigDecimal(Long.parseLong(lineGrossAmount));
+		final List<BigDecimal> grossAmounts = new LinkedList<>();
+
+		// Pull the gross amounts from the list and create big decimals out of the strings.
+		for (final String stringGrossAmount : lineGrossAmounts)
+		{
+			final BigDecimal longValue = BigDecimal.valueOf(Long.parseLong(stringGrossAmount));
+			grossAmounts.add(longValue);
+		}
+
+		if (grossAmounts.isEmpty())
+		{
+			grossAmounts.add(BigDecimal.valueOf(1000L));
+		}
 
 		Long lineNumberCounter = 1L;
 
-		for (final Product product : contentExtract.getProducts())
+		for (final BigDecimal lineGrossAmount : grossAmounts)
 		{
-			final UiModelScenarioLine line = new UiModelScenarioLine();
+			for (final Product product : contentExtract.getProducts())
+			{
+				final UiModelScenarioLine line = new UiModelScenarioLine();
 
-			line.setDelete(false);
-			line.setGrossAmount(lineGrossAmountValue);
-			line.setLineNumber(lineNumberCounter++);
-			line.setQuantity(new BigDecimal(1));
-			line.setProductCode(product.getName());
+				line.setDelete(false);
+				line.setGrossAmount(lineGrossAmount);
+				line.setLineNumber(lineNumberCounter++);
+				line.setQuantity(new BigDecimal(1));
+				line.setProductCode(product.getName());
 
-			final UiModelScenarioLineDetail lineDetail = new UiModelScenarioLineDetail();
+				final UiModelScenarioLineDetail lineDetail = new UiModelScenarioLineDetail();
 
-			lineDetail.setApplyNetQuantity("N");
-			lineDetail.setPointOfTitleTransfer("I");
-			lineDetail.setTransactionType("GS");
-			lineDetail.setScenarioLineCustomFields(new LinkedList<>());
-			lineDetail.setScenarioLineLicenses(new LinkedList<>());
-			lineDetail.setScenarioLineLocations(new LinkedList<>());
-			lineDetail.setScenarioLineQualifiers(new LinkedList<>());
-			lineDetail.setScenarioLineRegistrations(new LinkedList<>());
+				lineDetail.setApplyNetQuantity("N");
+				lineDetail.setPointOfTitleTransfer("I");
+				lineDetail.setTransactionType("GS");
+				lineDetail.setScenarioLineCustomFields(new LinkedList<>());
+				lineDetail.setScenarioLineLicenses(new LinkedList<>());
+				lineDetail.setScenarioLineLocations(new LinkedList<>());
+				lineDetail.setScenarioLineQualifiers(new LinkedList<>());
+				lineDetail.setScenarioLineRegistrations(new LinkedList<>());
 
-			line.setScenarioLinesDetails(lineDetail);
+				line.setScenarioLinesDetails(lineDetail);
 
-			scenarioLines.add(line);
+				scenarioLines.add(line);
+			}
 		}
 
 		return scenarioLines;

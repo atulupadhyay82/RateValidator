@@ -22,12 +22,21 @@ import com.thomsonreuters.extractvalidator.dto.extract.content.TreatmentGroupTre
 
 
 /**
- * LocationTreatmentBuilder Description.
+ * Utility class to help reconnecting the flattened data from the content extract into a form that can be used to comparisons with model scenario.
  *
  * @author Matt Godsey
  */
 public final class LocationTreatmentBuilder
 {
+	/**
+	 * Constant to use for sales tax type.
+	 */
+	private static final String SALES_TAX_TYPE = "SA";
+
+
+	/**
+	 * Private constructor to avoid instatiation.
+	 */
 	private LocationTreatmentBuilder()
 	{
 		// Private to avoid instatiation.
@@ -68,6 +77,12 @@ public final class LocationTreatmentBuilder
 	}
 
 
+	/**
+	 * Build the location treatment data based on the Authority grouping rule.
+	 *
+	 * @param locationTreatmentData The treatment data to populate.
+	 * @param contentExtract The content extract to build the data from.
+	 */
 	private static void buildLocationTreatmentDataByAuthority(final LocationTreatmentData locationTreatmentData, final ContentExtract contentExtract)
 	{
 		final List<Authority> authorities = new LinkedList<>();
@@ -129,6 +144,13 @@ public final class LocationTreatmentBuilder
 	}
 
 
+	/**
+	 * Build the location treatment data by grouping rules AuthorityType and TaxType. These types do not include authorities in the content extract and marry
+	 * everything together using JurisdictionTreatmentMappings.
+	 *
+	 * @param locationTreatmentData The treatment data to populate.
+	 * @param contentExtract The content extract to build the data from.
+	 */
 	private static void buildLocationTreatmentsByJurisdiction(final LocationTreatmentData locationTreatmentData, final ContentExtract contentExtract)
 	{
 		final List<JurisdictionTreatmentMapping> jurisdictionTreatmentMappings = new LinkedList<>();
@@ -156,7 +178,7 @@ public final class LocationTreatmentBuilder
 				{
 					if (jurisdictionTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString())
 						&& jurisdictionTreatmentMapping.getTreatmentGroupKey().equals(treatmentGroupTreatment.getTreatmentGroupKey())
-						&& jurisdictionTreatmentMapping.getTaxType().equals("SA"))
+						&& jurisdictionTreatmentMapping.getTaxType().equals(SALES_TAX_TYPE))
 					{
 						final JurisdictionData jurisdictionData = new JurisdictionData();
 
@@ -225,32 +247,5 @@ public final class LocationTreatmentBuilder
 				break;
 			}
 		}
-	}
-
-
-	private void test()
-	{
-//		for (final JurisdictionTreatmentMapping jurisdictionTreatmentMapping : jurisdictionTreatmentMappings)
-//		{
-//			if (jurisdictionTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString()))
-//			{
-//				final JurisdictionData jurisdictionData = new JurisdictionData();
-//				final List<Treatment> treatments = new LinkedList<>();
-//				final TreatmentData treatmentData = new TreatmentData();
-//
-//				jurisdictionData.setJurisdictionKey(Long.parseLong(jurisdictionTreatmentMapping.getJurisdictionKey()));
-//				jurisdictionData.setJurisdictionTreatmentData(new LinkedList<>());
-//
-//				treatmentData.setFromDate(jurisdictionTreatmentMapping.getEffectiveDate().getFrom());
-//				treatmentData.setToDate(jurisdictionTreatmentMapping.getEffectiveDate().getTo());
-//				extractTreatmentsFromJurisdiction(contentExtract, treatments, jurisdictionTreatmentMapping);
-//				treatmentData.setTreatments(treatments);
-//
-//				jurisdictionData.getJurisdictionTreatmentData().add(treatmentData);
-//				productJurisdictionData.getJurisdictionData().add(jurisdictionData);
-//
-//				break;
-//			}
-//		}
 	}
 }

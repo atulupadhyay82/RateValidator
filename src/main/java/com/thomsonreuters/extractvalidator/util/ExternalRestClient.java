@@ -29,8 +29,6 @@ import com.thomsonreuters.extractvalidator.dto.determination.UiCompanyList;
 import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenario;
 import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioDetail;
 import com.thomsonreuters.extractvalidator.dto.determination.UiScenarioResult;
-import com.thomsonreuters.extractvalidator.dto.determination.UiZone;
-import com.thomsonreuters.extractvalidator.dto.determination.UiZoneList;
 import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
 
 
@@ -349,6 +347,7 @@ public class ExternalRestClient
 				UiModelScenarioDetail.class
 		);
 
+		// Only here to avoid a larger complain block from Intellij.
 		final UiModelScenarioDetail unused = responseEntity.getBody();
 
 		LOG.info(Logger.EVENT_UNSPECIFIED, REST_SERVICE_CALL_COMPLETE);
@@ -376,6 +375,7 @@ public class ExternalRestClient
 				String.class
 		);
 
+		// Only here to avoid a larger complain block from Intellij.
 		final String empty = responseEntity.getBody();
 
 		LOG.info(Logger.EVENT_UNSPECIFIED, REST_SERVICE_CALL_COMPLETE);
