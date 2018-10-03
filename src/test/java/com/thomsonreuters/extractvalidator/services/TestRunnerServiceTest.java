@@ -79,7 +79,7 @@ public class TestRunnerServiceTest
 
 
 	/**
-	 * Verifies the functionality of {@link TestRunnerService#staticRunResults(TestRun)}.
+	 * Verifies the functionality of {@link TestRunnerService#generateRunResults(TestRun)}.
 	 */
 	@Test
 	public void staticRunResults()
@@ -98,7 +98,7 @@ public class TestRunnerServiceTest
 		Mockito.doReturn(result).when(externalRestClient).runModelScenario(testRunData, "10", "1");
 
 		// Based on one address, one gross amount and one product, expect 1 model scenario run with one line. So we should have one test case output.
-		final RunResults runResults = testRunnerService.staticRunResults(testRunData);
+		final RunResults runResults = testRunnerService.generateRunResults(testRunData);
 
 		Assert.assertThat(runResults.getTestCases().size(), is(1));
 

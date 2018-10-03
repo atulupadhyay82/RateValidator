@@ -109,29 +109,51 @@ public final class TestRunnerService
 	 *
 	 * @return A set of test case results based on the products and rates in the extract.
 	 */
-	public RunResults staticRunResults(final TestRun testRunData)
+	public RunResults generateRunResults(final TestRun testRunData)
 	{
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Starting test run for company: " + testRunData.getTestCompanyName());
-		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Retrieving extract for company: " + testRunData.getTestCompanyName());
-		final ContentExtract extract = (ContentExtract) externalRestClient.findContentExtract(testRunData, true);
+		ContentExtract extract = null;
+		UiCompany testCompany = null;
+
+		final UiCompanyList companies;
 		final List<TestCase> testCases = new LinkedList<>();
 		final RunResults runResults = new RunResults(testCases, testRunData.getTestRunNumber());
 
-		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Retrieving list of companies from Determination to get the company ID.");
-		final UiCompanyList companies = externalRestClient.findCompanies(testRunData);
-		final UiCompany testCompany = findTestCompany(testRunData, companies);
+		try
+		{
+			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Retrieving extract for company: " + testRunData.getTestCompanyName());
+			extract = (ContentExtract) externalRestClient.findContentExtract(testRunData, true);
 
-		if (null == testCompany)
+			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Retrieving list of companies from Determination to get the company ID.");
+			companies = externalRestClient.findCompanies(testRunData);
+			testCompany = findTestCompany(testRunData, companies);
+		}
+		catch (final Exception ex)
+		{
+			final String message = String.format("Rest call to find extract or companies failed, message: %s", ex.getMessage());
+
+			LOGGER.error(Logger.EVENT_FAILURE, message);
+
+			runResults.getTestCases().add(prepareErrorTestCase(message));
+		}
+
+		if (null != extract && null == extract.getLocations())
+		{
+			final String message = String.format("Extract found is incomplete: %s", extract.getExtractName());
+
+			LOGGER.error(Logger.EVENT_FAILURE, message);
+
+			runResults.getTestCases().add(prepareErrorTestCase(message));
+		}
+		else if (null != extract && null == testCompany)
 		{
 			final String message = String.format("Could not find company in Determination for test company named: %s", testRunData.getTestCompanyName());
 
 			LOGGER.error(Logger.EVENT_FAILURE, message);
 
-			final TestCase testCase = new TestCase();
-			testCase.setMessage(message);
-			runResults.getTestCases().add(testCase);
+			runResults.getTestCases().add(prepareErrorTestCase(message));
 		}
-		else
+		else if (null != extract)
 		{
 			try
 			{
@@ -146,11 +168,7 @@ public final class TestRunnerService
 			}
 			catch (final Exception ex)
 			{
-				final TestCase testCase = new TestCase();
-
-				testCase.setTestResult("ERROR");
-				testCase.setMessage(ex.getMessage());
-				runResults.getTestCases().add(testCase);
+				runResults.getTestCases().add(prepareErrorTestCase(ex.getMessage()));
 
 				LOGGER.error(Logger.EVENT_FAILURE, "Something went wrong. Message: " + ex.getMessage());
 			}
@@ -159,6 +177,24 @@ public final class TestRunnerService
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "All runs complete, returning test cases.");
 
 		return runResults;
+	}
+
+
+	/**
+	 * Prepare a test case with an error message when an exception occurs.
+	 *
+	 * @param message The error message to set.
+	 *
+	 * @return At test case with ERROR set as the status and an error message as the message.
+	 */
+	private TestCase prepareErrorTestCase(final String message)
+	{
+		final TestCase testCase = new TestCase();
+
+		testCase.setTestResult("ERROR");
+		testCase.setMessage(message);
+
+		return testCase;
 	}
 
 

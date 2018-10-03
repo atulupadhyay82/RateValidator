@@ -56,13 +56,13 @@ public final class TestRunnerController
 	 */
 	@CrossOrigin
 	@ResponseBody
-	@PostMapping(value = "run/static", consumes = {MediaType.APPLICATION_JSON_VALUE}, produces = {MediaType.APPLICATION_JSON_VALUE})
+	@PostMapping(value = "run/extractvalidation", consumes = {MediaType.APPLICATION_JSON_VALUE}, produces = {MediaType.APPLICATION_JSON_VALUE})
 	@ApiOperation(value = "Run the test.", notes = "Run the validation test to verify the provided content extract JSON.")
 	@ApiResponses(value = {@ApiResponse(code = 200, message = "OK", response = TestRun.class),
 						   @ApiResponse(code = 400, message = "Bad Request"),
 						   @ApiResponse(code = 500, message = "Server error. For more details check the logs.")})
-	public RunResults runStaticTest(@ApiParam(value = "The test data.") @RequestBody final TestRun data)
+	public RunResults runTest(@ApiParam(value = "The test data.") @RequestBody final TestRun data)
 	{
-		return testRunnerService.staticRunResults(data);
+		return testRunnerService.generateRunResults(data);
 	}
 }
