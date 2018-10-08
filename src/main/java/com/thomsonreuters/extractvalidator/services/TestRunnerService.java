@@ -291,6 +291,17 @@ public final class TestRunnerService
 					LOGGER.info(Logger.EVENT_UNSPECIFIED, "Creating new scenario: " + uiModelScenarioDetail.getScenarioName());
 					newModelScenario = externalRestClient.createModelScenario(testRunData, company.getCompanyId().toString(), uiModelScenarioDetail);
 					uiModelScenarioDetail.setScenarioId(newModelScenario.getScenarioId());
+
+					for (final UiModelScenarioLine line : uiModelScenarioDetail.getScenarioLines())
+					{
+						for (final UiModelScenarioLine savedLine : newModelScenario.getScenarioLines())
+						{
+							if (line.getLineNumber().equals(savedLine.getLineNumber()))
+							{
+								line.setScenarioLineId(savedLine.getScenarioLineId());
+							}
+						}
+					}
 				}
 				else
 				{

@@ -40,6 +40,7 @@ import com.thomsonreuters.extractvalidator.dto.extract.content.TreatmentGroupTre
 import com.thomsonreuters.extractvalidator.util.ExternalRestClient;
 import com.thomsonreuters.extractvalidator.util.GroupingRule;
 import com.thomsonreuters.extractvalidator.util.LoadMethod;
+import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -85,7 +86,8 @@ public class TestRunnerServiceTest
 	public void staticRunResults()
 	{
 		final TestRun testRunData = prepareTestRunData();
-		final UiModelScenarioDetail modelScenario = new UiModelScenarioDetail();
+		final ContentExtract contentExtract = prepareContentExtract();
+		final UiModelScenarioDetail modelScenario = prepareModelScenario(contentExtract, Collections.singletonList("100"), prepareUiCompany("111", "Test01", 1L));
 
 		modelScenario.setScenarioId(10L);
 
@@ -93,7 +95,7 @@ public class TestRunnerServiceTest
 
 		Mockito.doReturn(prepareCountryList()).when(externalRestClient).getCountries(testRunData);
 		Mockito.doReturn(prepareUiCompanyList("111", "Test01", 1L)).when(externalRestClient).findCompanies(testRunData);
-		Mockito.doReturn(prepareContentExtract()).when(externalRestClient).findContentExtract(testRunData, true);
+		Mockito.doReturn(contentExtract).when(externalRestClient).findContentExtract(testRunData, true);
 		Mockito.doReturn(modelScenario).when(externalRestClient).createModelScenario(eq(testRunData), eq("1"), any(UiModelScenarioDetail.class));
 		Mockito.doReturn(result).when(externalRestClient).runModelScenario(testRunData, "10", "1");
 
@@ -111,6 +113,12 @@ public class TestRunnerServiceTest
 		Assert.assertThat(testCase.getProductCategoryName(), is("General Goods"));
 		Assert.assertThat(testCase.getProductCode(), is("GG"));
 		Assert.assertThat(testCase.getTestResult(), is("PASSED"));
+	}
+
+
+	private UiModelScenarioDetail prepareModelScenario(final ContentExtract extract, final List<String> grossAmounts, final UiCompany company)
+	{
+		return ModelScenarioUtil.buildNewModelScenario(company, extract, extract.getExtractDate(), grossAmounts, "mod1");
 	}
 
 
@@ -306,16 +314,23 @@ public class TestRunnerServiceTest
 	{
 		final UiCompanyList uiCompanyList = new UiCompanyList();
 		final LinkedList<UiCompany> uiCompanies = new LinkedList<>();
+
+		uiCompanies.add(prepareUiCompany(uuid, name, id));
+		uiCompanyList.setCompanies(uiCompanies);
+
+		return uiCompanyList;
+	}
+
+
+	private UiCompany prepareUiCompany(final String uuid, final String name, final Long id)
+	{
 		final UiCompany uiCompany = new UiCompany();
 
 		uiCompany.setCompanyId(id);
 		uiCompany.setCompanyName(name);
 		uiCompany.setCompanyUuid(uuid);
 
-		uiCompanies.add(uiCompany);
-		uiCompanyList.setCompanies(uiCompanies);
-
-		return uiCompanyList;
+		return uiCompany;
 	}
 
 
