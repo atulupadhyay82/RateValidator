@@ -3,7 +3,14 @@ buildscript {
 		springBootVersion = '2.0.4.RELEASE'
 	}
 	repositories {
-		mavenCentral()
+		maven {
+			name "BAMS releases"
+			credentials {
+				username "$bamsUser"
+				password "$bamsPassword"
+			}
+			url "${artifactoryBaseUrl}/public.maven.global"
+		}
 	}
 	dependencies {
 		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
@@ -20,19 +27,15 @@ version = '0.0.1-SNAPSHOT'
 sourceCompatibility = 1.8
 
 repositories {
-	mavenCentral()
-
 	maven {
-		name "Virtual Internal IDT Repos"
-		url "http://artifactory.corp.ositax.com:8081/artifactory/idt-cloud-repos"
-	}
-
-	maven {
-		name "Virtual External Repos"
-		url "http://artifactory.corp.ositax.com:8081/artifactory/repo"
+		name "BAMS releases"
+		credentials {
+			username "$bamsUser"
+			password "$bamsPassword"
+		}
+		url "${artifactoryBaseUrl}/public.maven.global"
 	}
 }
-
 
 dependencies {
 	// Spring Boot.
