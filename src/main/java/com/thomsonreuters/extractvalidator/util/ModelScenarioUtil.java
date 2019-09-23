@@ -138,20 +138,23 @@ public final class ModelScenarioUtil
 		final List<UiModelScenarioLocation> locations = new LinkedList<>();
 		final List<String> locationTypes = Arrays.asList("SHIP_TO", "SHIP_FROM", "SELLER_PRIMARY", "BUYER_PRIMARY", "ORDER_ACCEPTANCE", "ORDER_ORIGIN", "SUPPLY", "BILL_TO", "MIDDLEMAN");
 
+		String country2code = null;
+
+		for (final ClientZone country : countryList)
+		{
+			if (country.getName().equals(address.getCountry()))
+			{
+				country2code = country.getChar2Code();
+				break;
+			}
+		}
+
 		for (final String locationType : locationTypes)
 		{
 			final UiModelScenarioLocation location = new UiModelScenarioLocation();
 
 			location.setLocationType(locationType);
-
-			for (final ClientZone country : countryList)
-			{
-				if (country.getName().equals(address.getCountry()))
-				{
-					location.setCountry(country.getChar2Code());
-					break;
-				}
-			}
+			location.setCountry(country2code);
 
 			if (locationType.equals("SHIP_FROM") || locationType.equals("SHIP_TO"))
 			{
@@ -198,35 +201,35 @@ public final class ModelScenarioUtil
 
 		Long lineNumberCounter = 1L;
 
-		for (final BigDecimal lineGrossAmount : grossAmounts)
-		{
-			for (final Product product : contentExtract.getProducts())
-			{
-				final UiModelScenarioLine line = new UiModelScenarioLine();
+		if(null != contentExtract.getProducts()) {
 
-				line.setDelete(false);
-				line.setGrossAmount(lineGrossAmount);
-				line.setLineNumber(lineNumberCounter++);
-				line.setQuantity(new BigDecimal(1));
-				line.setProductCode(product.getName());
+			for (final BigDecimal lineGrossAmount : grossAmounts) {
+				for (final Product product : contentExtract.getProducts()) {
+					final UiModelScenarioLine line = new UiModelScenarioLine();
 
-				final UiModelScenarioLineDetail lineDetail = new UiModelScenarioLineDetail();
+					line.setDelete(false);
+					line.setGrossAmount(lineGrossAmount);
+					line.setLineNumber(lineNumberCounter++);
+					line.setQuantity(new BigDecimal(1));
+					line.setProductCode(product.getName());
 
-				lineDetail.setApplyNetQuantity("N");
-				lineDetail.setPointOfTitleTransfer("I");
-				lineDetail.setTransactionType("GS");
-				lineDetail.setScenarioLineCustomFields(new LinkedList<>());
-				lineDetail.setScenarioLineLicenses(new LinkedList<>());
-				lineDetail.setScenarioLineLocations(new LinkedList<>());
-				lineDetail.setScenarioLineQualifiers(new LinkedList<>());
-				lineDetail.setScenarioLineRegistrations(new LinkedList<>());
+					final UiModelScenarioLineDetail lineDetail = new UiModelScenarioLineDetail();
 
-				line.setScenarioLinesDetails(lineDetail);
+					lineDetail.setApplyNetQuantity("N");
+					lineDetail.setPointOfTitleTransfer("I");
+					lineDetail.setTransactionType("GS");
+					lineDetail.setScenarioLineCustomFields(new LinkedList<>());
+					lineDetail.setScenarioLineLicenses(new LinkedList<>());
+					lineDetail.setScenarioLineLocations(new LinkedList<>());
+					lineDetail.setScenarioLineQualifiers(new LinkedList<>());
+					lineDetail.setScenarioLineRegistrations(new LinkedList<>());
 
-				scenarioLines.add(line);
+					line.setScenarioLinesDetails(lineDetail);
+
+					scenarioLines.add(line);
+				}
 			}
 		}
-
 		return scenarioLines;
 	}
 }

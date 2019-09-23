@@ -88,40 +88,36 @@ public final class LocationTreatmentBuilder
 		final List<Authority> authorities = new LinkedList<>();
 
 		// Find all the authorities for the specific jurisdiction used for this model scenario run.
-		for (final JurisdictionAuthority jurisdictionAuthority : contentExtract.getJurisdictionAuthorities())
-		{
-			if (Long.parseLong(jurisdictionAuthority.getJurisdictionKey()) == locationTreatmentData.getJurisdictionNKey())
-			{
-				for (final Authority authority : contentExtract.getAuthorities())
-				{
-					if (authority.getAuthorityKey().equals(jurisdictionAuthority.getAuthorityKey()))
-					{
+
+	if ( null != contentExtract.getJurisdictionAuthorities() ) {
+		for (final JurisdictionAuthority jurisdictionAuthority : contentExtract.getJurisdictionAuthorities()) {
+			if (Long.parseLong(jurisdictionAuthority.getJurisdictionKey()) == locationTreatmentData.getJurisdictionNKey()) {
+				for (final Authority authority : contentExtract.getAuthorities()) {
+					if (authority.getAuthorityKey().equals(jurisdictionAuthority.getAuthorityKey())) {
 						authorities.add(authority);
 					}
 				}
 			}
 		}
+	}
 
+	if ( null != contentExtract.getProducts()) {
 		// For each product gather authority data, authority treatment mappings and treatments. Use the set of authorities gathered above.
-		for (final Product product : contentExtract.getProducts())
-		{
+		for (final Product product : contentExtract.getProducts()) {
 			final ProductAuthorityData productAuthorityData = new ProductAuthorityData();
 
 			productAuthorityData.setProduct(product);
 			productAuthorityData.setAuthorityData(new LinkedList<>());
 
-			for (final Authority authority : authorities)
-			{
+			for (final Authority authority : authorities) {
 				final AuthorityData authorityData = new AuthorityData();
 
 				authorityData.setAuthorityName(authority.getAuthorityName());
 				authorityData.setAuthorityTreatmentData(new LinkedList<>());
 
-				for (final AuthorityTreatmentMapping authorityTreatmentMapping : contentExtract.getAuthorityTreatmentMappings())
-				{
+				for (final AuthorityTreatmentMapping authorityTreatmentMapping : contentExtract.getAuthorityTreatmentMappings()) {
 					if (authorityTreatmentMapping.getAuthorityKey().equals(authority.getAuthorityKey())
-						&& authorityTreatmentMapping.getProductKey().equals(product.getProductCategoryKey().toString()))
-					{
+							&& authorityTreatmentMapping.getProductKey().equals(product.getProductCategoryKey().toString())) {
 						final List<Treatment> treatments = new LinkedList<>();
 						final TreatmentData authorityTreatmentData = new TreatmentData();
 
@@ -141,6 +137,7 @@ public final class LocationTreatmentBuilder
 
 			locationTreatmentData.getProductAuthorityData().add(productAuthorityData);
 		}
+	}
 	}
 
 
