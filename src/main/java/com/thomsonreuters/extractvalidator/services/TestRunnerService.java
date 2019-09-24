@@ -137,9 +137,25 @@ public final class TestRunnerService
 			runResults.getTestCases().add(prepareErrorTestCase(message));
 		}
 
-		if (null != extract && null == extract.getLocations())
+		if (null != extract && null == extract.getAddresses()) //&& null == extract.getLocations()
 		{
 			final String message = String.format("Extract found is incomplete: %s", extract.getExtractName());
+
+			LOGGER.error(Logger.EVENT_FAILURE, message);
+
+			runResults.getTestCases().add(prepareErrorTestCase(message));
+		}
+		else if (null != extract && null == extract.getProducts()) {
+
+			final String message = String.format("Extract without any products: %s", extract.getExtractName());
+
+			LOGGER.error(Logger.EVENT_FAILURE, message);
+
+			runResults.getTestCases().add(prepareErrorTestCase(message));
+		}
+		else if ( null != extract && null == extract.getJurisdictionAuthorities() && null == extract.getJurisdictionTreatmentMappings() ) {
+
+			final String message = String.format("Extract without any jurisdictionAuthorities, jurisdictionTreatmentMappings : %s", extract.getExtractName());
 
 			LOGGER.error(Logger.EVENT_FAILURE, message);
 
@@ -177,6 +193,7 @@ public final class TestRunnerService
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "All runs complete, returning test cases.");
 
 		return runResults;
+
 	}
 
 

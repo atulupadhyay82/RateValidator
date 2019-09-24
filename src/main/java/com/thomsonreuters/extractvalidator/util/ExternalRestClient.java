@@ -248,7 +248,7 @@ public class ExternalRestClient
 
 		final URI uri = builder.buildAndExpand(params).encode().toUri();
 
-		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
+		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri + " findContentExtract");
 
 		final Object response = isStatic ? findContentExtractEntity(authorization, uri) : findContentExtractJson(authorization, uri);
 
@@ -271,7 +271,7 @@ public class ExternalRestClient
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_COMPANIES);
 		final URI uri = builder.build().encode().toUri();
 
-		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
+		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri + " findCompanies");
 
 		final ResponseEntity<UiCompanyList> responseEntity = restTemplate.exchange(
 				uri,
@@ -305,7 +305,7 @@ public class ExternalRestClient
 
 		final URI uri = builder.buildAndExpand(params).encode().toUri();
 
-		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
+		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri + " createModelScenario");
 
 		final ResponseEntity<UiModelScenarioDetail> responseEntity = restTemplate.exchange(
 				uri,
@@ -338,7 +338,7 @@ public class ExternalRestClient
 
 		final URI uri = builder.buildAndExpand(params).encode().toUri();
 
-		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
+		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri + " updateModelScenario");
 
 		final ResponseEntity<UiModelScenarioDetail> responseEntity = restTemplate.exchange(
 				uri,
@@ -366,7 +366,7 @@ public class ExternalRestClient
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_DELETE_MOD_SCEN);
 		final URI uri = builder.build().encode().toUri();
 
-		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
+		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri + " deleteModelScenario");
 
 		final ResponseEntity<String> responseEntity = restTemplate.exchange(
 				uri,
@@ -402,7 +402,7 @@ public class ExternalRestClient
 
 		final URI uri = builder.buildAndExpand(params).encode().toUri();
 
-		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
+		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri + " runModelScenario");
 
 		final ResponseEntity<UiScenarioResult> responseEntity = restTemplate.exchange(
 				uri,
@@ -430,7 +430,7 @@ public class ExternalRestClient
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_FIND_MOD_SCEN);
 		final URI uri = builder.build().encode().toUri();
 
-		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
+		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri + " findModelScenarios");
 
 		final ResponseEntity<List<UiModelScenario>> responseEntity = restTemplate.exchange(
 				uri,
@@ -460,7 +460,7 @@ public class ExternalRestClient
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_FIND_COUNTRIES);
 		final URI uri = builder.build().encode().toUri();
 
-		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri);
+		LOG.info(Logger.EVENT_UNSPECIFIED, MAKING_OUTBOUND_REST_SERVICE_CALL_URI + uri + " getCountries");
 
 		final ResponseEntity<List<ClientZone>> responseEntity = restTemplate.exchange(
 				uri,
