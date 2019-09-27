@@ -117,7 +117,7 @@ public final class LocationTreatmentBuilder
 
 				for (final AuthorityTreatmentMapping authorityTreatmentMapping : contentExtract.getAuthorityTreatmentMappings()) {
 					if (authorityTreatmentMapping.getAuthorityKey().equals(authority.getAuthorityKey())
-							&& authorityTreatmentMapping.getProductKey().equals(product.getProductCategoryKey().toString())) {
+							&& authorityTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString())) {
 						final List<Treatment> treatments = new LinkedList<>();
 						final TreatmentData authorityTreatmentData = new TreatmentData();
 

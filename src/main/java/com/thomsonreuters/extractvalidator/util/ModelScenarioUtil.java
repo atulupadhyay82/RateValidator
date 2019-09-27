@@ -162,7 +162,7 @@ public final class ModelScenarioUtil
 				location.setState(address.getState());
 				location.setDistrict(address.getDistrict());
 				location.setCounty(address.getCounty());
-				location.setCity(address.getCity());
+//				location.setCity(address.getCity());
 				location.setPostalCode(address.getPostalCode());
 				location.setGeoCode(address.getGeocode());
 			}

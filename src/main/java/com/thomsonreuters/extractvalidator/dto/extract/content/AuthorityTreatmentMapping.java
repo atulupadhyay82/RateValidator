@@ -25,7 +25,7 @@ public class AuthorityTreatmentMapping
 	/**
 	 * Numeric hash key associated with a product
 	 */
-	private String productKey;
+	private String productCategoryKey;
 
 	/**
 	 * Numeric hash key associated with an authority
