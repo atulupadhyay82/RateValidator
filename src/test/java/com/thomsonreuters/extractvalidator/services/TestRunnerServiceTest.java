@@ -201,12 +201,12 @@ public class TestRunnerServiceTest
 
 		authorityTreatmentMapping1.setAuthorityKey("789");
 		authorityTreatmentMapping1.setEffectiveDate(new EffectiveDate(LocalDateTime.of(2018, 9, 01, 00, 00), LocalDateTime.of(2018, 10, 01, 00, 00)));
-		authorityTreatmentMapping1.setProductKey("741");
+		authorityTreatmentMapping1.setProductCategoryKey("741");
 		authorityTreatmentMapping1.setTreatmentKey("654");
 
 		authorityTreatmentMapping2.setAuthorityKey("789");
 		authorityTreatmentMapping2.setEffectiveDate(new EffectiveDate(LocalDateTime.of(2018, 9, 01, 00, 00), LocalDateTime.of(2018, 10, 01, 00, 00)));
-		authorityTreatmentMapping2.setProductKey("741");
+		authorityTreatmentMapping2.setProductCategoryKey("741");
 		authorityTreatmentMapping2.setTreatmentKey("321");
 
 		contentExtract.getAuthorityTreatmentMappings().add(authorityTreatmentMapping1);
