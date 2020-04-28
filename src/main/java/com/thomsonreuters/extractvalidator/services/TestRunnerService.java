@@ -1,49 +1,26 @@
 package com.thomsonreuters.extractvalidator.services;
 
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import com.thomsonreuters.extractvalidator.dto.RunResults;
+import com.thomsonreuters.extractvalidator.dto.TestCase;
+import com.thomsonreuters.extractvalidator.dto.TestRun;
+import com.thomsonreuters.extractvalidator.dto.content.ClientZone;
+import com.thomsonreuters.extractvalidator.dto.determination.*;
+import com.thomsonreuters.extractvalidator.dto.extract.TestAddress;
+import com.thomsonreuters.extractvalidator.dto.extract.content.*;
+import com.thomsonreuters.extractvalidator.util.ExternalRestClient;
+import com.thomsonreuters.extractvalidator.util.LocationTreatmentBuilder;
+import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.thomsonreuters.extractvalidator.dto.RunResults;
-import com.thomsonreuters.extractvalidator.dto.TestCase;
-import com.thomsonreuters.extractvalidator.dto.TestRun;
-import com.thomsonreuters.extractvalidator.dto.content.ClientZone;
-import com.thomsonreuters.extractvalidator.dto.determination.UiAuthorityTaxDetail;
-import com.thomsonreuters.extractvalidator.dto.determination.UiCompany;
-import com.thomsonreuters.extractvalidator.dto.determination.UiCompanyList;
-import com.thomsonreuters.extractvalidator.dto.determination.UiLineTaxDetail;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenario;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioDetail;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioLine;
-import com.thomsonreuters.extractvalidator.dto.determination.UiScenarioResult;
-import com.thomsonreuters.extractvalidator.dto.extract.TestAddress;
-import com.thomsonreuters.extractvalidator.dto.extract.content.Address;
-import com.thomsonreuters.extractvalidator.dto.extract.content.AuthorityData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
-import com.thomsonreuters.extractvalidator.dto.extract.content.JurisdictionData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.LocationTreatmentData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.ProductAuthorityData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.ProductJurisdictionData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.Tier;
-import com.thomsonreuters.extractvalidator.dto.extract.content.Treatment;
-import com.thomsonreuters.extractvalidator.dto.extract.content.TreatmentData;
-import com.thomsonreuters.extractvalidator.util.ExternalRestClient;
-import com.thomsonreuters.extractvalidator.util.LocationTreatmentBuilder;
-import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 
 /**
@@ -126,6 +103,7 @@ public final class TestRunnerService
 
 			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Retrieving list of companies from Determination to get the company ID.");
 			companies = externalRestClient.findCompanies(testRunData);
+
 			testCompany = findTestCompany(testRunData, companies);
 		}
 		catch (final Exception ex)
@@ -292,14 +270,15 @@ public final class TestRunnerService
 		UiModelScenarioDetail newModelScenario;
 		int scenarioCounter = 1;
 
+
 		for (final Address address : contentExtract.getAddresses())
 		{
-			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building location treatment data.");
+			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building location treatment data for jurisdiction:"+ address.getJurisdictionKey());
 			final LocationTreatmentData locationTreatmentData = LocationTreatmentBuilder.buildLocationTreatmentData(address, contentExtract);
 
 			if (!locationTreatmentData.getProductAuthorityData().isEmpty() || !locationTreatmentData.getProductJurisdictionData().isEmpty())
 			{
-				LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building new scenario for Address: " + address.toString());
+				LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building new scenario for Address: " + address.getPostalCode());
 				uiModelScenarioDetail.setLocationList(ModelScenarioUtil.buildLocations(address, countryList));
 
 				LOGGER.info(Logger.EVENT_UNSPECIFIED, "Processing scenario run: " + scenarioCounter++);
@@ -453,10 +432,12 @@ public final class TestRunnerService
 					{
 						for (final TreatmentData authorityTreatmentData : authorityData.getAuthorityTreatmentData())
 						{
-							final LocalDateTime fromDate = authorityTreatmentData.getFromDate();
-							final LocalDateTime toDate = authorityTreatmentData.getToDate();
 
-							if (effectiveDate.isAfter(fromDate) && (null == toDate || (effectiveDate.isBefore(toDate))))
+							final LocalDate fromDate =  (authorityTreatmentData.getFromDate()!=null) ? authorityTreatmentData.getFromDate().toLocalDate() : null;
+							final LocalDate toDate = (authorityTreatmentData.getToDate()!=null) ? authorityTreatmentData.getToDate().toLocalDate() : null;
+							final LocalDate effective_Date = effectiveDate.toLocalDate();
+
+							if (((effective_Date.isAfter(fromDate)) || (effective_Date.isEqual(fromDate))) && (null == toDate || effective_Date.isEqual(toDate) || (effective_Date.isBefore(toDate))))
 							{
 								accumulatedRate = accumulatedRate.add(calculateAccumulatedRate(authorityTreatmentData.getTreatments(), lineGrossAmount));
 							}
@@ -482,12 +463,13 @@ public final class TestRunnerService
 					{
 						for (final TreatmentData treatmentData : jurisdictionData.getJurisdictionTreatmentData())
 						{
-							final LocalDateTime fromDate = treatmentData.getFromDate();
-							final LocalDateTime toDate = treatmentData.getToDate();
-
-							if (effectiveDate.isAfter(fromDate) && (null == toDate || (effectiveDate.isBefore(toDate))))
+							final LocalDate fromDate = (treatmentData.getFromDate()!=null) ? treatmentData.getFromDate().toLocalDate() : null;
+							final LocalDate toDate = (treatmentData.getToDate()!=null) ? treatmentData.getToDate().toLocalDate() : null;
+							final LocalDate effective_Date = effectiveDate.toLocalDate();
+							if (((effective_Date.isAfter(fromDate)) || (effective_Date.isEqual(fromDate))) && (null == toDate || effective_Date.isEqual(toDate) || (effective_Date.isBefore(toDate))))
 							{
 								accumulatedRate = accumulatedRate.add(calculateAccumulatedRate(treatmentData.getTreatments(), lineGrossAmount));
+
 							}
 						}
 					}

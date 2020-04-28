@@ -1,30 +1,18 @@
 package com.thomsonreuters.extractvalidator.util;
 
 
+import com.thomsonreuters.extractvalidator.dto.content.ClientZone;
+import com.thomsonreuters.extractvalidator.dto.determination.*;
+import com.thomsonreuters.extractvalidator.dto.extract.content.Address;
+import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
+import com.thomsonreuters.extractvalidator.dto.extract.content.Product;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-
-import com.thomsonreuters.extractvalidator.dto.content.ClientZone;
-import com.thomsonreuters.extractvalidator.dto.determination.UiBasicCompany;
-import com.thomsonreuters.extractvalidator.dto.determination.UiCompany;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioCalcs;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioDetail;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioEstInfo;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioExemptions;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioLine;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioLineDetail;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioLocation;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioOverrides;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioReports;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioTaxType;
-import com.thomsonreuters.extractvalidator.dto.determination.UiOperatingLicenses;
-import com.thomsonreuters.extractvalidator.dto.extract.content.Address;
-import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
-import com.thomsonreuters.extractvalidator.dto.extract.content.Product;
 
 
 /**
@@ -223,6 +211,7 @@ public final class ModelScenarioUtil
 					lineDetail.setScenarioLineLocations(new LinkedList<>());
 					lineDetail.setScenarioLineQualifiers(new LinkedList<>());
 					lineDetail.setScenarioLineRegistrations(new LinkedList<>());
+					lineDetail.setScenarioLineCalcs(new UiModelScenarioLineCalcs());
 
 					line.setScenarioLinesDetails(lineDetail);
 
