@@ -9,7 +9,7 @@ buildscript {
 				username "$bamsUser"
 				password "$bamsPassword"
 			}
-			url "${artifactoryBaseUrl}/public.maven.global"
+			url "${artifactoryBaseUrl}/libs-release"
 		}
 	}
 	dependencies {
@@ -33,7 +33,7 @@ repositories {
 			username "$bamsUser"
 			password "$bamsPassword"
 		}
-		url "${artifactoryBaseUrl}/public.maven.global"
+		url "${artifactoryBaseUrl}/libs-release"
 	}
 }
 
