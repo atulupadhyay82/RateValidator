@@ -1,14 +1,13 @@
 package com.thomsonreuters.extractvalidator.dto.extract.content;
 
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.thomsonreuters.extractvalidator.util.ActivityCode;
+import lombok.Data;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Data;
-
-import com.thomsonreuters.extractvalidator.util.ActivityCode;
 
 
 /**
@@ -64,4 +63,9 @@ public class Treatment
 	 * Contains the desired action for the authority (I - insert, U - update, D - delete)
 	 */
 	private ActivityCode changeType;
+
+	/**
+	 * Basic percent associated with the treatment
+	 */
+	private BigDecimal basis_percent;
 }

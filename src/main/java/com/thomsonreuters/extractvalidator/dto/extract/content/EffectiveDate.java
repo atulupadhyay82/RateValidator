@@ -1,10 +1,10 @@
 package com.thomsonreuters.extractvalidator.dto.extract.content;
 
 
-import java.time.LocalDateTime;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 
 /**

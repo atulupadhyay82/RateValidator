@@ -1,9 +1,9 @@
 package com.thomsonreuters.extractvalidator.dto.extract.content;
 
 
-import java.util.List;
-
 import lombok.Data;
+
+import java.util.List;
 
 
 /**
@@ -18,4 +18,5 @@ public final class LocationTreatmentData
 	private List<ProductAuthorityData> productAuthorityData;
 	private List<ProductJurisdictionData> productJurisdictionData;
 	private Address address;
+
 }

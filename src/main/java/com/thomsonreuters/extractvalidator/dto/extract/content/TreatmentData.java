@@ -1,10 +1,10 @@
 package com.thomsonreuters.extractvalidator.dto.extract.content;
 
 
+import lombok.Data;
+
 import java.time.LocalDateTime;
 import java.util.List;
-
-import lombok.Data;
 
 
 /**
@@ -18,4 +18,6 @@ public final class TreatmentData
 	private LocalDateTime fromDate;
 	private LocalDateTime toDate;
 	private List<Treatment> treatments;
+
+
 }

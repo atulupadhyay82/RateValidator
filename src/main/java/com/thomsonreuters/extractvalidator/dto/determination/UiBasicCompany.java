@@ -3,7 +3,6 @@ package com.thomsonreuters.extractvalidator.dto.determination;
 
 import lombok.Data;
 
-
 /**
  * A data transfer object representing the most basic portion of a company.
  *

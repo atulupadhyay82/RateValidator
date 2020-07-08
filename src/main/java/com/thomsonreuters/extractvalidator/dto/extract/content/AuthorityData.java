@@ -1,9 +1,9 @@
 package com.thomsonreuters.extractvalidator.dto.extract.content;
 
 
-import java.util.List;
-
 import lombok.Data;
+
+import java.util.List;
 
 
 /**

@@ -1,13 +1,12 @@
 package com.thomsonreuters.extractvalidator.dto.extract.content;
 
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-import lombok.Data;
-
 import com.thomsonreuters.extractvalidator.util.GroupingRule;
 import com.thomsonreuters.extractvalidator.util.LoadMethod;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 
 /**

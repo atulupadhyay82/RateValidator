@@ -1,9 +1,9 @@
 package com.thomsonreuters.extractvalidator.dto.determination;
 
 
-import javax.validation.constraints.Size;
-
 import lombok.Data;
+
+import javax.validation.constraints.Size;
 
 
 /**
@@ -67,4 +67,17 @@ public final class UiModelScenarioTaxType
 	 */
 	@Size(max = 20, message = "Maximum Size allowed for geo code tax type is 20.")
 	private String geoCodeTaxType;
+
+	public UiModelScenarioTaxType(String taxType){
+		allTaxType= taxType;
+		countryTaxType= taxType;
+		provinceTaxType= taxType;
+		geoCodeTaxType= taxType;
+		postalCodeTaxType= taxType;
+		districtTaxType= taxType;
+		cityTaxType= taxType;
+		countyTaxType= taxType;
+		stateTaxType= taxType;
+	}
 }
+

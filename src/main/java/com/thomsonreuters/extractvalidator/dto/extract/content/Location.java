@@ -2,12 +2,13 @@ package com.thomsonreuters.extractvalidator.dto.extract.content;
 
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+
+
+import com.thomsonreuters.extractvalidator.util.ActivityCode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import com.thomsonreuters.extractvalidator.util.ActivityCode;
 
 
 /**

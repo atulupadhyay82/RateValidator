@@ -8,8 +8,6 @@ import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
 import com.thomsonreuters.extractvalidator.dto.extract.content.Product;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -34,27 +32,25 @@ public final class ModelScenarioUtil
 	/**
 	 * Build a basic model scenario setting the required data structures to be deemed valid by the Determination REST endpoint.
 	 *
-	 * @param company The company to use.
+	 *
 	 * @param contentExtract The extract to use for building lines.
-	 * @param effectiveDate The effective date to use.
 	 * @param lineGrossAmounts A list of gross amount to use for the line, if null use default of 1000.
 	 * @param modelScenarioName Name of the model scenario to use.
 	 *
 	 * @return A model scenario with default values, and lines built for each product in the content extract.
 	 */
-	public static UiModelScenarioDetail buildNewModelScenario(final UiCompany company,
+	public static UiModelScenarioDetail buildNewModelScenario(final String companyName,
+															  final String companyUUID,
+															  final String productCategoryName,
 															  final ContentExtract contentExtract,
-															  final LocalDateTime effectiveDate,
 															  final List<String> lineGrossAmounts,
-															  final String modelScenarioName)
+															  final String modelScenarioName,
+															  final String taxType)
 	{
 		final UiModelScenarioDetail uiModelScenarioDetail = new UiModelScenarioDetail();
 
 		// Date format expected by Model Scenario endpoint.
-		final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
-		final String scenarioDate = effectiveDate.format(dateTimeFormatter);
 
-		uiModelScenarioDetail.setEffectiveDate(scenarioDate);
 		uiModelScenarioDetail.setScenarioName(modelScenarioName);
 		uiModelScenarioDetail.setApplyCredit("N");
 		uiModelScenarioDetail.setAuditSpecification("NO_AUDIT");
@@ -62,8 +58,8 @@ public final class ModelScenarioUtil
 
 		final UiBasicCompany uiBasicCompany = new UiBasicCompany();
 
-		uiBasicCompany.setCompanyName(company.getCompanyName());
-		uiBasicCompany.setCompanyUuid(company.getCompanyUuid());
+		uiBasicCompany.setCompanyName(companyName);
+		uiBasicCompany.setCompanyUuid(companyUUID);
 
 		uiModelScenarioDetail.setCompany(uiBasicCompany);
 		uiModelScenarioDetail.setCurrencyCode("USD");
@@ -89,10 +85,13 @@ public final class ModelScenarioUtil
 		uiModelScenarioDetail.setEstbBuyer(establishments);
 		uiModelScenarioDetail.setEstbMiddleman(new UiModelScenarioEstInfo());
 		uiModelScenarioDetail.setEstbSeller(establishments);
-		uiModelScenarioDetail.setModelScenarioCalcs(new UiModelScenarioCalcs());
+
+		final UiModelScenarioCalcs calcs= new UiModelScenarioCalcs();
+		//calcs.setTaxCode("HOLIDAY");
+		uiModelScenarioDetail.setModelScenarioCalcs(calcs);
 		uiModelScenarioDetail.setModelScenarioOverrides(new UiModelScenarioOverrides());
 		uiModelScenarioDetail.setModelScenarioReports(new UiModelScenarioReports());
-		uiModelScenarioDetail.setModelScenarioTaxType(new UiModelScenarioTaxType());
+		uiModelScenarioDetail.setModelScenarioTaxType(new UiModelScenarioTaxType(taxType));
 		uiModelScenarioDetail.setScenarioRegistrations(new LinkedList<>());
 
 		final UiOperatingLicenses operatingLicenses = new UiOperatingLicenses();
@@ -105,7 +104,7 @@ public final class ModelScenarioUtil
 		uiModelScenarioDetail.setOperatingLicenses(operatingLicenses);
 		uiModelScenarioDetail.setQualifiers(new LinkedList<>());
 
-		uiModelScenarioDetail.setScenarioLines(buildScenarioLinesByProduct(contentExtract, lineGrossAmounts));
+		uiModelScenarioDetail.setScenarioLines(buildScenarioLinesByProduct(contentExtract, productCategoryName,lineGrossAmounts));
 
 		return uiModelScenarioDetail;
 	}
@@ -121,7 +120,7 @@ public final class ModelScenarioUtil
 	 *
 	 * @return A set of model scenario locations.
 	 */
-	public static List<UiModelScenarioLocation> buildLocations(final Address address, final List<ClientZone> countryList)
+	public static List<UiModelScenarioLocation> buildLocations(final Address address, final List<ClientZone> countryList, String extractName)
 	{
 		final List<UiModelScenarioLocation> locations = new LinkedList<>();
 		final List<String> locationTypes = Arrays.asList("SHIP_TO", "SHIP_FROM", "SELLER_PRIMARY", "BUYER_PRIMARY", "ORDER_ACCEPTANCE", "ORDER_ORIGIN", "SUPPLY", "BILL_TO", "MIDDLEMAN");
@@ -136,7 +135,14 @@ public final class ModelScenarioUtil
 				break;
 			}
 		}
+		String postalRange= address.getGeocode();
+		String splitRange[];
+		String geocode=null;
 
+		if(postalRange != null){
+			splitRange=postalRange.split("-");
+			geocode=splitRange[0].trim();
+		}
 		for (final String locationType : locationTypes)
 		{
 			final UiModelScenarioLocation location = new UiModelScenarioLocation();
@@ -144,16 +150,26 @@ public final class ModelScenarioUtil
 			location.setLocationType(locationType);
 			location.setCountry(country2code);
 
-			if (locationType.equals("SHIP_FROM") || locationType.equals("SHIP_TO"))
+			if (locationType.equals("SHIP_TO") || (locationType.equals("SHIP_FROM") && !extractName.contains("WayfairUAT_01_AL")))
 			{
 				location.setProvince(address.getProvince());
 				location.setState(address.getState());
 				location.setDistrict(address.getDistrict());
 				location.setCounty(address.getCounty());
-//				location.setCity(address.getCity());
+				location.setCity(address.getCity());
 				location.setPostalCode(address.getPostalCode());
-				location.setGeoCode(address.getGeocode());
+				location.setGeoCode(geocode);
 			}
+
+			if(extractName.contains("WayfairUAT_01_AL")){
+				if(locationType.equals("SHIP_FROM")){
+					location.setState("CALIFORNIA");
+					location.setCounty("UNITED STATES");
+					location.setPostalCode("95823");
+					location.setGeoCode("3000");
+				}
+			}
+
 
 			locations.add(location);
 		}
@@ -170,7 +186,7 @@ public final class ModelScenarioUtil
 	 *
 	 * @return The list of lines to use in the model scenario.
 	 */
-	private static List<UiModelScenarioLine> buildScenarioLinesByProduct(final ContentExtract contentExtract, final List<String> lineGrossAmounts)
+	private static List<UiModelScenarioLine> buildScenarioLinesByProduct(final ContentExtract contentExtract, final String productCategoryName, final List<String> lineGrossAmounts)
 	{
 		final List<UiModelScenarioLine> scenarioLines = new LinkedList<>();
 		final List<BigDecimal> grossAmounts = new LinkedList<>();
@@ -178,13 +194,13 @@ public final class ModelScenarioUtil
 		// Pull the gross amounts from the list and create big decimals out of the strings.
 		for (final String stringGrossAmount : lineGrossAmounts)
 		{
-			final BigDecimal longValue = BigDecimal.valueOf(Long.parseLong(stringGrossAmount));
-			grossAmounts.add(longValue);
+			final BigDecimal doubleValue = BigDecimal.valueOf(Double.parseDouble(stringGrossAmount));
+			grossAmounts.add(doubleValue);
 		}
 
 		if (grossAmounts.isEmpty())
 		{
-			grossAmounts.add(BigDecimal.valueOf(1000L));
+			grossAmounts.add(BigDecimal.valueOf(1000.00));
 		}
 
 		Long lineNumberCounter = 1L;
@@ -193,29 +209,33 @@ public final class ModelScenarioUtil
 
 			for (final BigDecimal lineGrossAmount : grossAmounts) {
 				for (final Product product : contentExtract.getProducts()) {
-					final UiModelScenarioLine line = new UiModelScenarioLine();
+					if(productCategoryName!=null && !product.getProductCategory().contains(productCategoryName)){
+						continue;
+					}
+						final UiModelScenarioLine line = new UiModelScenarioLine();
 
-					line.setDelete(false);
-					line.setGrossAmount(lineGrossAmount);
-					line.setLineNumber(lineNumberCounter++);
-					line.setQuantity(new BigDecimal(1));
-					line.setProductCode(product.getName());
+						line.setDelete(false);
+						line.setGrossAmount(lineGrossAmount);
+						line.setLineNumber(lineNumberCounter++);
+						line.setQuantity(new BigDecimal(1));
+						line.setProductCode(product.getName());
 
-					final UiModelScenarioLineDetail lineDetail = new UiModelScenarioLineDetail();
+						final UiModelScenarioLineDetail lineDetail = new UiModelScenarioLineDetail();
 
-					lineDetail.setApplyNetQuantity("N");
-					lineDetail.setPointOfTitleTransfer("I");
-					lineDetail.setTransactionType("GS");
-					lineDetail.setScenarioLineCustomFields(new LinkedList<>());
-					lineDetail.setScenarioLineLicenses(new LinkedList<>());
-					lineDetail.setScenarioLineLocations(new LinkedList<>());
-					lineDetail.setScenarioLineQualifiers(new LinkedList<>());
-					lineDetail.setScenarioLineRegistrations(new LinkedList<>());
-					lineDetail.setScenarioLineCalcs(new UiModelScenarioLineCalcs());
+						lineDetail.setApplyNetQuantity("N");
+						lineDetail.setPointOfTitleTransfer("I");
+						lineDetail.setTransactionType("GS");
+						lineDetail.setScenarioLineCustomFields(new LinkedList<>());
+						lineDetail.setScenarioLineLicenses(new LinkedList<>());
+						lineDetail.setScenarioLineLocations(new LinkedList<>());
+						lineDetail.setScenarioLineQualifiers(new LinkedList<>());
+						lineDetail.setScenarioLineRegistrations(new LinkedList<>());
+						lineDetail.setScenarioLineCalcs(new UiModelScenarioLineCalcs());
 
-					line.setScenarioLinesDetails(lineDetail);
+						line.setScenarioLinesDetails(lineDetail);
 
-					scenarioLines.add(line);
+						scenarioLines.add(line);
+
 				}
 			}
 		}

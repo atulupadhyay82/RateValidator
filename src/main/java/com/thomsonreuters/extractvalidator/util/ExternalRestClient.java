@@ -1,14 +1,14 @@
 package com.thomsonreuters.extractvalidator.util;
 
 
-import java.net.URI;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.json.JsonObject;
-
+import com.thomsonreuters.extractvalidator.dto.TestRun;
+import com.thomsonreuters.extractvalidator.dto.content.ClientZone;
+import com.thomsonreuters.extractvalidator.dto.determination.UiCompanyList;
+import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenario;
+import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioDetail;
+import com.thomsonreuters.extractvalidator.dto.determination.UiScenarioResult;
+import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
+import lombok.Data;
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,15 +21,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import lombok.Data;
-
-import com.thomsonreuters.extractvalidator.dto.TestRun;
-import com.thomsonreuters.extractvalidator.dto.content.ClientZone;
-import com.thomsonreuters.extractvalidator.dto.determination.UiCompanyList;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenario;
-import com.thomsonreuters.extractvalidator.dto.determination.UiModelScenarioDetail;
-import com.thomsonreuters.extractvalidator.dto.determination.UiScenarioResult;
-import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
+import javax.json.JsonObject;
+import java.net.URI;
+import java.sql.Timestamp;
+import java.util.*;
 
 
 /**
@@ -136,6 +131,10 @@ public class ExternalRestClient
 	 */
 	private RestTemplate restTemplate;
 
+	private static final String UDS_TOKEN_URL="http://10.202.96.120:5011/api/LoneStar/UdsToken";
+
+	private static final Map<String,String> UDS_TOKEN_MAP = new HashMap<>();
+
 
 	/**
 	 * Constructs a DeterminationRestClient.
@@ -194,6 +193,7 @@ public class ExternalRestClient
 	 */
 	private ContentExtract findContentExtractEntity(final String authorization, final URI uri)
 	{
+
 		final ResponseEntity<ContentExtract> responseEntity = restTemplate.exchange(
 				uri,
 				HttpMethod.GET,
@@ -267,7 +267,8 @@ public class ExternalRestClient
 	 */
 	public UiCompanyList findCompanies(final TestRun testRunData)
 	{
-		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
+		final String authorization = checkUDSTokenExpiry() ? getUDSToken(testRunData.getEnvCredentialsID(),testRunData.getEnvCredentialsPassword(),testRunData.getEnvironmentMS()) : UDS_TOKEN_MAP.get("UDS_Token");
+		LOG.info(Logger.EVENT_UNSPECIFIED, "Fetch UDS token: "+authorization);
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_COMPANIES);
 		final URI uri = builder.build().encode().toUri();
 
@@ -297,7 +298,8 @@ public class ExternalRestClient
 	 */
 	public UiModelScenarioDetail createModelScenario(final TestRun testRunData, final String companyId, final UiModelScenarioDetail modelScenarioDetail)
 	{
-		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
+		final String authorization = checkUDSTokenExpiry() ? getUDSToken(testRunData.getEnvCredentialsID(),testRunData.getEnvCredentialsPassword(),testRunData.getEnvironmentMS()) : UDS_TOKEN_MAP.get("UDS_Token");
+		LOG.info(Logger.EVENT_UNSPECIFIED, "Fetch UDS token: "+authorization);
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_CREATE_MOD_SCEN);
 		final Map<String, String> params = new HashMap<>();
 
@@ -329,7 +331,8 @@ public class ExternalRestClient
 	 */
 	public void updateModelScenario(final TestRun testRunData, final String companyId, final UiModelScenarioDetail modelScenarioDetail)
 	{
-		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
+		final String authorization = checkUDSTokenExpiry() ? getUDSToken(testRunData.getEnvCredentialsID(),testRunData.getEnvCredentialsPassword(),testRunData.getEnvironmentMS()) : UDS_TOKEN_MAP.get("UDS_Token");
+		LOG.info(Logger.EVENT_UNSPECIFIED, "Fetch UDS token: "+authorization);
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_UPDATE_MOD_SCEN);
 		final Map<String, String> params = new HashMap<>();
 
@@ -362,7 +365,8 @@ public class ExternalRestClient
 	 */
 	public void deleteModelScenario(final TestRun testRunData, final List<String> modelScenarioIds)
 	{
-		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
+		final String authorization = checkUDSTokenExpiry() ? getUDSToken(testRunData.getEnvCredentialsID(),testRunData.getEnvCredentialsPassword(),testRunData.getEnvironmentMS()) : UDS_TOKEN_MAP.get("UDS_Token");
+		LOG.info(Logger.EVENT_UNSPECIFIED, "Fetch UDS token: "+authorization);
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_DELETE_MOD_SCEN);
 		final URI uri = builder.build().encode().toUri();
 
@@ -393,7 +397,8 @@ public class ExternalRestClient
 	 */
 	public UiScenarioResult runModelScenario(final TestRun testRunData, final String modelScenarioId, final String companyId)
 	{
-		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
+		final String authorization = checkUDSTokenExpiry() ? getUDSToken(testRunData.getEnvCredentialsID(),testRunData.getEnvCredentialsPassword(),testRunData.getEnvironmentMS()) : UDS_TOKEN_MAP.get("UDS_Token");
+		LOG.info(Logger.EVENT_UNSPECIFIED, "Fetch UDS token: "+authorization);
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_RUN_MOD_SCEN);
 		final Map<String, String> params = new HashMap<>();
 
@@ -426,7 +431,8 @@ public class ExternalRestClient
 	 */
 	public List<UiModelScenario> findModelScenarios(final TestRun testRunData)
 	{
-		final String authorization = AuthUtils.prefixUDSCredentials(testRunData.getUdsToken());
+		final String authorization = checkUDSTokenExpiry() ? getUDSToken(testRunData.getEnvCredentialsID(),testRunData.getEnvCredentialsPassword(),testRunData.getEnvironmentMS()) : UDS_TOKEN_MAP.get("UDS_Token");
+		LOG.info(Logger.EVENT_UNSPECIFIED, "Fetch UDS token: "+authorization);
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_FIND_MOD_SCEN);
 		final URI uri = builder.build().encode().toUri();
 
@@ -456,7 +462,8 @@ public class ExternalRestClient
 	 */
 	public List<ClientZone> getCountries(final TestRun testRunData)
 	{
-		final String authorization = createBasicAuthenticationString(testRunData.getServiceUser(), testRunData.getServicePassword());
+		final String authorization = checkUDSTokenExpiry() ? getUDSToken(testRunData.getEnvCredentialsID(),testRunData.getEnvCredentialsPassword(),testRunData.getEnvironmentMS()) : UDS_TOKEN_MAP.get("UDS_Token");
+		LOG.info(Logger.EVENT_UNSPECIFIED, "Fetch UDS token: "+authorization);
 		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(testRunData.getDeterminationBaseUrl()).path(REST_SERVICE_URI_FIND_COUNTRIES);
 		final URI uri = builder.build().encode().toUri();
 
@@ -474,5 +481,50 @@ public class ExternalRestClient
 		LOG.info(Logger.EVENT_UNSPECIFIED, REST_SERVICE_CALL_COMPLETE);
 
 		return responseEntity.getBody();
+	}
+
+	public boolean checkUDSTokenExpiry()  {
+		if(UDS_TOKEN_MAP.size()==0){
+			return true;
+		}
+		long currentTime = new Timestamp(new Date().getTime()).getTime();
+		long lastFetchUDSTime= Long.parseLong(UDS_TOKEN_MAP.get("lastUpdated"));
+		long difference = currentTime - lastFetchUDSTime;
+		boolean result= difference > 7200000 ? true : false;
+		LOG.info(Logger.EVENT_UNSPECIFIED,"UDS token is "+ (difference/1000)+" second old");
+		return result;
+
+	}
+
+	public String getUDSToken(String userName, String password, String environment) {
+
+		final UDSTokenUtility authUtils=new UDSTokenUtility(userName,password);
+		final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(UDS_TOKEN_URL);
+		LOG.info(Logger.EVENT_UNSPECIFIED,"UDS token expired. Fetching new one");
+
+		builder.queryParam("env", environment);
+		UDS_TOKEN_MAP.clear();
+		final URI uri = builder.build().encode().toUri();
+		ResponseEntity<String> responseEntity;
+		int counter=0;
+		do{
+			responseEntity= restTemplate.exchange(
+					uri,
+					HttpMethod.POST,
+					new HttpEntity<UDSTokenUtility>(authUtils),
+					String.class
+			);
+			counter++;
+			LOG.info(Logger.EVENT_UNSPECIFIED,"Trying to fetch UDS token: "+counter);
+		}while(responseEntity.getBody()==null && counter<5);
+		Date date = new Date();
+		Timestamp timestamp1 = new Timestamp(date.getTime());
+
+		UDS_TOKEN_MAP.put("UDS_Token",responseEntity.getBody());
+		UDS_TOKEN_MAP.put("lastUpdated",Long.toString(timestamp1.getTime()));
+
+
+		LOG.info(Logger.EVENT_UNSPECIFIED, "Fetch UDS token: "+responseEntity.getBody());
+		return UDS_TOKEN_MAP.get("UDS_Token");
 	}
 }

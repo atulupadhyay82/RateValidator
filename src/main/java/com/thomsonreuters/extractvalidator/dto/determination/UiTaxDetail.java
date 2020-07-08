@@ -1,9 +1,9 @@
 package com.thomsonreuters.extractvalidator.dto.determination;
 
 
-import java.util.List;
-
 import lombok.Data;
+
+import java.util.List;
 
 
 /**
@@ -17,6 +17,7 @@ public class UiTaxDetail
 	/**
 	 * Holds messages.
 	 */
+
 	private List<UiMessage> messages;
 
 	/**

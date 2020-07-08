@@ -2,9 +2,8 @@ package com.thomsonreuters.extractvalidator.dto.extract.content;
 
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Data;
-
 import com.thomsonreuters.extractvalidator.util.ActivityCode;
+import lombok.Data;
 
 
 /**
@@ -56,4 +55,5 @@ public class JurisdictionTreatmentMapping
 	 * Contains the action for the authority (I - insert, U - update, D - delete).
 	 */
 	private ActivityCode changeType;
+
 }

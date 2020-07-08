@@ -47,12 +47,12 @@ public final class TestCase
 	/**
 	 * Model Scenario found effective Rate.
 	 */
-	private String modelScenarioRate;
+	private String modelScenarioTaxAmount;
 
 	/**
 	 * Extract accumulated rate for product, tax type, and location.
 	 */
-	private String accumulatedRate;
+	private String extractTaxAmount;
 
 	/**
 	 * Gross amount of the test case.
@@ -63,4 +63,10 @@ public final class TestCase
 	 * Address for this test case.
 	 */
 	private TestAddress address;
+
+	private Long jurisdiction;
+
+	private int scenarioExecuted;
+
+
 }

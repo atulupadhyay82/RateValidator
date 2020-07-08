@@ -1,10 +1,10 @@
 package com.thomsonreuters.extractvalidator.dto;
 
 
-import java.util.List;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
+
+import java.util.List;
 
 
 /**
@@ -25,4 +25,6 @@ public final class RunResults
 	 * The test run number to track which test run this was.
 	 */
 	private String testRunNumber;
+
+
 }

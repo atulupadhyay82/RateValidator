@@ -1,24 +1,12 @@
 package com.thomsonreuters.extractvalidator.util;
 
 
+import com.thomsonreuters.extractvalidator.dto.extract.content.*;
+
 import java.util.LinkedList;
 import java.util.List;
 
-import com.thomsonreuters.extractvalidator.dto.extract.content.Address;
-import com.thomsonreuters.extractvalidator.dto.extract.content.Authority;
-import com.thomsonreuters.extractvalidator.dto.extract.content.AuthorityData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.AuthorityTreatmentMapping;
-import com.thomsonreuters.extractvalidator.dto.extract.content.ContentExtract;
-import com.thomsonreuters.extractvalidator.dto.extract.content.JurisdictionAuthority;
-import com.thomsonreuters.extractvalidator.dto.extract.content.JurisdictionData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.JurisdictionTreatmentMapping;
-import com.thomsonreuters.extractvalidator.dto.extract.content.LocationTreatmentData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.Product;
-import com.thomsonreuters.extractvalidator.dto.extract.content.ProductAuthorityData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.ProductJurisdictionData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.Treatment;
-import com.thomsonreuters.extractvalidator.dto.extract.content.TreatmentData;
-import com.thomsonreuters.extractvalidator.dto.extract.content.TreatmentGroupTreatment;
+
 
 
 /**
@@ -32,6 +20,8 @@ public final class LocationTreatmentBuilder
 	 * Constant to use for sales tax type.
 	 */
 	private static final String SALES_TAX_TYPE = "SA";
+
+	private static final String USE_TAX_TYPE = "US";
 
 
 	/**
@@ -112,23 +102,22 @@ public final class LocationTreatmentBuilder
 			for (final Authority authority : authorities) {
 				final AuthorityData authorityData = new AuthorityData();
 
+
 				authorityData.setAuthorityName(authority.getAuthorityName());
 				authorityData.setAuthorityTreatmentData(new LinkedList<>());
 
+
 				for (final AuthorityTreatmentMapping authorityTreatmentMapping : contentExtract.getAuthorityTreatmentMappings()) {
 					if (authorityTreatmentMapping.getAuthorityKey().equals(authority.getAuthorityKey())
-							&& authorityTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString())) {
+							&& authorityTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString())
+							&& ( authorityTreatmentMapping.getTaxType().equals(SALES_TAX_TYPE) || authorityTreatmentMapping.getTaxType().equals(USE_TAX_TYPE))							) {
 						final List<Treatment> treatments = new LinkedList<>();
 						final TreatmentData authorityTreatmentData = new TreatmentData();
-
 						authorityTreatmentData.setFromDate(authorityTreatmentMapping.getEffectiveDate().getFrom());
 						authorityTreatmentData.setToDate(authorityTreatmentMapping.getEffectiveDate().getTo());
 						extractTreatmentsFromAuthority(contentExtract, treatments, authorityTreatmentMapping);
 						authorityTreatmentData.setTreatments(treatments);
-
 						authorityData.getAuthorityTreatmentData().add(authorityTreatmentData);
-
-						break;
 					}
 				}
 
@@ -158,6 +147,7 @@ public final class LocationTreatmentBuilder
 			if (Long.parseLong(jurisdictionTreatmentMapping.getJurisdictionKey()) == locationTreatmentData.getJurisdictionNKey())
 			{
 				jurisdictionTreatmentMappings.add(jurisdictionTreatmentMapping);
+
 			}
 		}
 
@@ -168,14 +158,13 @@ public final class LocationTreatmentBuilder
 
 			productJurisdictionData.setProduct(product);
 			productJurisdictionData.setJurisdictionData(new LinkedList<>());
-
 			for (final JurisdictionTreatmentMapping jurisdictionTreatmentMapping : jurisdictionTreatmentMappings)
 			{
 				for (final TreatmentGroupTreatment treatmentGroupTreatment : contentExtract.getTreatmentGroupTreatments())
 				{
 					if (jurisdictionTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString())
 						&& jurisdictionTreatmentMapping.getTreatmentGroupKey().equals(treatmentGroupTreatment.getTreatmentGroupKey())
-						&& jurisdictionTreatmentMapping.getTaxType().equals(SALES_TAX_TYPE))
+						&& (jurisdictionTreatmentMapping.getTaxType().equals(SALES_TAX_TYPE) || jurisdictionTreatmentMapping.getTaxType().equals(USE_TAX_TYPE)))
 					{
 						final JurisdictionData jurisdictionData = new JurisdictionData();
 
@@ -191,14 +180,15 @@ public final class LocationTreatmentBuilder
 						treatmentData.setTreatments(treatments);
 
 						jurisdictionData.getJurisdictionTreatmentData().add(treatmentData);
-
 						productJurisdictionData.getJurisdictionData().add(jurisdictionData);
-						break;
+
 					}
 				}
 			}
 
 			locationTreatmentData.getProductJurisdictionData().add(productJurisdictionData);
+
+
 		}
 	}
 

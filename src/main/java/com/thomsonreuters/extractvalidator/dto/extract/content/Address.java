@@ -1,13 +1,16 @@
 package com.thomsonreuters.extractvalidator.dto.extract.content;
 
 
+
+
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.thomsonreuters.extractvalidator.util.ActivityCode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import com.thomsonreuters.extractvalidator.util.ActivityCode;
+import java.math.BigInteger;
 
 
 /**
@@ -20,7 +23,7 @@ import com.thomsonreuters.extractvalidator.util.ActivityCode;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-public class Address
+public class Address implements Comparable<Address>
 {
 	/**
 	 * Numeric hash key associated with a address
@@ -75,10 +78,16 @@ public class Address
 	/**
 	 * Geocode associated with the location
 	 */
+
 	private String geocode;
 
 	/**
 	 * Contains the action for the authority (I - insert, U - update, D - delete)
 	 */
 	private ActivityCode changeType;
+
+	@Override
+	public int compareTo(Address o) {
+		return  new BigInteger(this.getAddressKey()).compareTo(new BigInteger(o.getAddressKey()));
+	}
 }

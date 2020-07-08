@@ -1,10 +1,10 @@
 package com.thomsonreuters.extractvalidator.dto;
 
 
-import java.util.List;
-
 import lombok.Data;
 import lombok.NonNull;
+
+import java.util.List;
 
 
 /**
@@ -26,6 +26,10 @@ public final class TestRun
 	@NonNull
 	private String testCompanyName;
 
+	private String testCompanyUUID;
+
+	private String testCompanyID;
+
 	/**
 	 * Extract config name, used to find the content extract.
 	 */
@@ -44,11 +48,6 @@ public final class TestRun
 	@NonNull
 	private String contentExtractBaseUrl;
 
-	/**
-	 * UDS token for use in making public REST service calls to Determination.
-	 */
-	@NonNull
-	private String udsToken;
 
 	/**
 	 * User name of native Determination user, for use in making calls to get the Content Extract.
@@ -68,11 +67,6 @@ public final class TestRun
 	private List<String> lineGrossAmounts;
 
 	/**
-	 * Effective date to use for model scenario calculations and rate comparisons.
-	 */
-	private String effectiveDate;
-
-	/**
 	 * Name of model scenario to use.
 	 */
 	@NonNull
@@ -83,4 +77,43 @@ public final class TestRun
 	 */
 	@NonNull
 	private Boolean cleanupModelScenario;
+
+	/**
+	 * username for model scenario UI login
+	 */
+	@NonNull
+	private String envCredentialsID;
+
+	/**
+	 * password for model scenario UI login
+	 */
+
+	@NonNull
+	private String envCredentialsPassword;
+
+	/**
+	 * environment for model scenario UI login
+	 */
+	@NonNull
+	private String environmentMS;
+
+	/**
+	 * skip the already processed jurisdictions in case of failures
+	 */
+	private int skipScenarios;
+
+	/**
+	 * selective running for no of jurisdictions passed in this parameter
+	 */
+	private List<String> jurisdictionKeys;
+
+	private List<String> postalCodeList;
+
+	private String taxType;
+
+	private String productCategoryName;
+
+
+
+	public TestRun(){}
 }
