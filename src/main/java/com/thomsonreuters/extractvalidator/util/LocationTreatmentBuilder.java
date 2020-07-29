@@ -16,13 +16,6 @@ import java.util.List;
  */
 public final class LocationTreatmentBuilder
 {
-	/**
-	 * Constant to use for sales tax type.
-	 */
-	private static final String SALES_TAX_TYPE = "SA";
-
-	private static final String USE_TAX_TYPE = "US";
-
 
 	/**
 	 * Private constructor to avoid instatiation.
@@ -41,7 +34,7 @@ public final class LocationTreatmentBuilder
 	 *
 	 * @return A set of data that relates only to the given jurisdiction key.
 	 */
-	public static LocationTreatmentData buildLocationTreatmentData(final Address address, final ContentExtract contentExtract)
+	public static LocationTreatmentData buildLocationTreatmentData(final Address address, final ContentExtract contentExtract, final String taxType)
 	{
 		final LocationTreatmentData locationTreatmentData = new LocationTreatmentData();
 		final Long jurisdictionNKey = Long.parseLong(address.getJurisdictionKey());
@@ -56,11 +49,11 @@ public final class LocationTreatmentBuilder
 		// Treatment Mapping which relates to grouping by tax type.
 		if (null == contentExtract.getJurisdictionTreatmentMappings())
 		{
-			buildLocationTreatmentDataByAuthority(locationTreatmentData, contentExtract);
+			buildLocationTreatmentDataByAuthority(locationTreatmentData, contentExtract,taxType);
 		}
 		else if (null == contentExtract.getJurisdictionAuthorities())
 		{
-			buildLocationTreatmentsByJurisdiction(locationTreatmentData, contentExtract);
+			buildLocationTreatmentsByJurisdiction(locationTreatmentData, contentExtract,taxType);
 		}
 
 		return locationTreatmentData;
@@ -73,7 +66,7 @@ public final class LocationTreatmentBuilder
 	 * @param locationTreatmentData The treatment data to populate.
 	 * @param contentExtract The content extract to build the data from.
 	 */
-	private static void buildLocationTreatmentDataByAuthority(final LocationTreatmentData locationTreatmentData, final ContentExtract contentExtract)
+	private static void buildLocationTreatmentDataByAuthority(final LocationTreatmentData locationTreatmentData, final ContentExtract contentExtract, final String taxType)
 	{
 		final List<Authority> authorities = new LinkedList<>();
 
@@ -110,7 +103,7 @@ public final class LocationTreatmentBuilder
 				for (final AuthorityTreatmentMapping authorityTreatmentMapping : contentExtract.getAuthorityTreatmentMappings()) {
 					if (authorityTreatmentMapping.getAuthorityKey().equals(authority.getAuthorityKey())
 							&& authorityTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString())
-							&& ( authorityTreatmentMapping.getTaxType().equals(SALES_TAX_TYPE) || authorityTreatmentMapping.getTaxType().equals(USE_TAX_TYPE))							) {
+							&& ( authorityTreatmentMapping.getTaxType().equals(taxType))) {
 						final List<Treatment> treatments = new LinkedList<>();
 						final TreatmentData authorityTreatmentData = new TreatmentData();
 						authorityTreatmentData.setFromDate(authorityTreatmentMapping.getEffectiveDate().getFrom());
@@ -137,7 +130,7 @@ public final class LocationTreatmentBuilder
 	 * @param locationTreatmentData The treatment data to populate.
 	 * @param contentExtract The content extract to build the data from.
 	 */
-	private static void buildLocationTreatmentsByJurisdiction(final LocationTreatmentData locationTreatmentData, final ContentExtract contentExtract)
+	private static void buildLocationTreatmentsByJurisdiction(final LocationTreatmentData locationTreatmentData, final ContentExtract contentExtract, String taxType)
 	{
 		final List<JurisdictionTreatmentMapping> jurisdictionTreatmentMappings = new LinkedList<>();
 
@@ -164,7 +157,7 @@ public final class LocationTreatmentBuilder
 				{
 					if (jurisdictionTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString())
 						&& jurisdictionTreatmentMapping.getTreatmentGroupKey().equals(treatmentGroupTreatment.getTreatmentGroupKey())
-						&& (jurisdictionTreatmentMapping.getTaxType().equals(SALES_TAX_TYPE) || jurisdictionTreatmentMapping.getTaxType().equals(USE_TAX_TYPE)))
+						&& (jurisdictionTreatmentMapping.getTaxType().equals(taxType)))
 					{
 						final JurisdictionData jurisdictionData = new JurisdictionData();
 

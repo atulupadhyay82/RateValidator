@@ -261,13 +261,14 @@ public final class TestRunnerService
 		final List<ClientZone> countryList = externalRestClient.getCountries(testRunData);
 		final List<String> lineGrossAmounts = null == testRunData.getLineGrossAmounts() ? new LinkedList<>() : testRunData.getLineGrossAmounts();
 		final String companyID= testRunData.getTestCompanyID();
+		final String taxType=testRunData.getTaxType();
 		final UiModelScenarioDetail uiModelScenarioDetail = ModelScenarioUtil.buildNewModelScenario(testRunData.getTestCompanyName(),
 																									testRunData.getTestCompanyUUID(),
 																									testRunData.getProductCategoryName(),
 																									contentExtract,
 																									lineGrossAmounts,
 																									testRunData.getModelScenarioName(),
-																									testRunData.getTaxType());
+																									taxType);
 
 		UiModelScenarioDetail newModelScenario;
 		int scenarioCounter = 1;
@@ -287,17 +288,20 @@ public final class TestRunnerService
 		for (final Address address : addresses)
 		{
 			jurisdictionKey=address.getJurisdictionKey();
-			if( ((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("GEOCODE"))) || ((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("POSTAL")) && (address.getGeocode()==null))){
+			if( ((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("GEOCODE")))
+					|| ((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("POSTAL")) && (address.getGeocode()==null))
+					|| ((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("NoCode")) && (address.getGeocode()==null) && (address.getPostalCode() == null)) )
+			{
 				continue;
 			}
 			else {
 				//LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building location treatment data for jurisdiction:"+ address.getJurisdictionKey());
 
-				final LocationTreatmentData locationTreatmentData = LocationTreatmentBuilder.buildLocationTreatmentData(address, contentExtract);
+				final LocationTreatmentData locationTreatmentData = LocationTreatmentBuilder.buildLocationTreatmentData(address, contentExtract,taxType);
 
 				if ((!locationTreatmentData.getProductAuthorityData().isEmpty() || !locationTreatmentData.getProductJurisdictionData().isEmpty()))
 				{
-					LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building new scenario for Address: " + address.getPostalCode()+" and with key : "+address.getAddressKey());
+					LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building new scenario for Address: " + address.getPostalCode()+" and with jurisdiction : "+jurisdictionKey);
 					uiModelScenarioDetail.setLocationList(ModelScenarioUtil.buildLocations(address, countryList,testRunData.getTestExtractConfigName()));
 					if(address.getPostalCode()!=null && address.getGeocode()!=null){
 						if(jurisdictionMap.get(jurisdictionKey)!=null){
@@ -313,6 +317,10 @@ public final class TestRunnerService
 					else if(address.getPostalCode()!=null && address.getGeocode()==null){
 						jurisdictionMap.put(jurisdictionKey,"POSTAL");
 						LOGGER.info(Logger.EVENT_UNSPECIFIED, "For jurisdiction (without geocode) : "+jurisdictionKey);
+					}
+					else if(address.getPostalCode()==null && address.getGeocode()==null){
+						jurisdictionMap.put(jurisdictionKey,"NoCode");
+						LOGGER.info(Logger.EVENT_UNSPECIFIED, "For jurisdiction (without postal and geocode) : "+jurisdictionKey);
 					}
 
 					if(jurisdictionList !=null && !jurisdictionList.contains(jurisdictionKey)){

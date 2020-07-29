@@ -67,5 +67,5 @@ public class Treatment
 	/**
 	 * Basic percent associated with the treatment
 	 */
-	private BigDecimal basis_percent;
+	private BigDecimal basisPercent;
 }
