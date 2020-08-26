@@ -284,6 +284,8 @@ public final class TestRunnerService
 		List<Address> addresses= contentExtract.getAddresses();
 
 		Collections.sort(addresses);
+		LOGGER.info(Logger.EVENT_UNSPECIFIED,"Skipped list : "+jurisdictionList);
+
 
 		for (final Address address : addresses)
 		{
@@ -622,18 +624,20 @@ public final class TestRunnerService
 
 		for (final Treatment treatment : treatments)
 		{
-			if (treatment.getBasis_percent() !=null){
-				grossAmount= grossAmount.multiply(treatment.getBasis_percent());
+			if (treatment.getBasisPercent() !=null){
+				grossAmount= grossAmount.multiply(treatment.getBasisPercent());
 			}
 			if (null != treatment.getRate())
 			{
 
 				accumulatedTaxAmount = accumulatedTaxAmount.add(calculateTaxAmountFromExtract(treatment.getRate(),grossAmount));
+				LOGGER.info(Logger.EVENT_UNSPECIFIED,"gross amount is: "+grossAmount);
 
 			}
 			else
 			{
 				BigDecimal tierAmount= BigDecimal.valueOf(0);
+				LOGGER.info(Logger.EVENT_UNSPECIFIED,"gross amount is: "+grossAmount);
 				for (final Tier tier : treatment.getTierList())
 				{
 					if(treatment.getSplitType().equalsIgnoreCase("G")) {

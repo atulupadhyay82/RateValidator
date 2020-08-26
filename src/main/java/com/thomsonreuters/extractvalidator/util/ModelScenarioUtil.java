@@ -82,7 +82,7 @@ public final class ModelScenarioUtil
 		establishments.setIsShipTo(true);
 		establishments.setIsShipFrom(true);
 
-		uiModelScenarioDetail.setEstbBuyer(establishments);
+		uiModelScenarioDetail.setEstbBuyer(new UiModelScenarioEstInfo());
 		uiModelScenarioDetail.setEstbMiddleman(new UiModelScenarioEstInfo());
 		uiModelScenarioDetail.setEstbSeller(establishments);
 
@@ -92,6 +92,8 @@ public final class ModelScenarioUtil
 		uiModelScenarioDetail.setModelScenarioOverrides(new UiModelScenarioOverrides());
 		uiModelScenarioDetail.setModelScenarioReports(new UiModelScenarioReports());
 		uiModelScenarioDetail.setModelScenarioTaxType(new UiModelScenarioTaxType(taxType));
+
+
 		uiModelScenarioDetail.setScenarioRegistrations(new LinkedList<>());
 
 		final UiOperatingLicenses operatingLicenses = new UiOperatingLicenses();
@@ -164,7 +166,6 @@ public final class ModelScenarioUtil
 			if(extractName.contains("WayfairUAT_01_AL")){
 				if(locationType.equals("SHIP_FROM")){
 					location.setState("CALIFORNIA");
-					location.setCounty("UNITED STATES");
 					location.setPostalCode("95823");
 					location.setGeoCode("3000");
 				}
