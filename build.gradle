@@ -26,6 +26,10 @@ group = 'com.thomsonreuters'
 version = '0.0.1-SNAPSHOT'
 sourceCompatibility = 1.8
 
+configurations {
+	jaxb
+}
+
 repositories {
 	maven {
 		name "BAMS releases"
@@ -36,6 +40,45 @@ repositories {
 		url "${artifactoryBaseUrl}/libs-release"
 	}
 }
+
+// tag::wsdl[]
+task genJaxb {
+	ext.sourcesDir = "${buildDir}/generated-sources/jaxb"
+	ext.classesDir = "${buildDir}/classes/jaxb"
+	ext.schema = "https://det-cre-sat.onesourcetax.com/sabrix/services/taxcalculationservice/2011-09-01/taxcalculationservice?wsdl"
+
+	outputs.dir classesDir
+
+	doLast() {
+		project.ant {
+			taskdef name: "xjc", classname: "com.sun.tools.xjc.XJCTask",
+					classpath: configurations.jaxb.asPath
+			mkdir(dir: sourcesDir)
+			mkdir(dir: classesDir)
+
+			xjc(destdir: sourcesDir, schema: schema,
+					package: "com.thomsonreuters.extractvalidator.wsdl") {
+				arg(value: "-wsdl")
+				produces(dir: sourcesDir, includes: "**/*.java")
+			}
+
+			javac(destdir: classesDir, source: 1.8, target: 1.8, debug: true,
+					debugLevel: "lines,vars,source",
+					classpath: configurations.jaxb.asPath) {
+				src(path: sourcesDir)
+				include(name: "**/*.java")
+				include(name: "*.java")
+			}
+
+			copy(todir: classesDir) {
+				fileset(dir: sourcesDir, erroronmissingdir: false) {
+					exclude(name: "**/*.java")
+				}
+			}
+		}
+	}
+}
+// end::wsdl[]
 
 dependencies {
 	// Spring Boot.
@@ -63,4 +106,12 @@ dependencies {
 	testCompile('com.google.code.gson:gson:2.8.6')
 	compile('com.google.code.gson:gson:2.8.6')
 	testImplementation('org.mockito:mockito-inline:2.13.0')
+
+	implementation 'org.springframework.ws:spring-ws-core'
+	// For Java 11:
+	implementation 'org.glassfish.jaxb:jaxb-runtime'
+	compile(files(genJaxb.classesDir).builtBy(genJaxb))
+
+	jaxb "com.sun.xml.bind:jaxb-xjc:2.1.7"
+
 }
