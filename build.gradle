@@ -42,48 +42,50 @@ repositories {
 }
 
 // tag::wsdl[]
-task genJaxb {
-	ext.sourcesDir = "${buildDir}/generated-sources/jaxb"
-	ext.classesDir = "${buildDir}/classes/jaxb"
-	ext.schema = "https://det-cre-sat.onesourcetax.com/sabrix/services/taxcalculationservice/2011-09-01/taxcalculationservice?wsdl"
-
-	outputs.dir classesDir
-
-	doLast() {
-		project.ant {
-			taskdef name: "xjc", classname: "com.sun.tools.xjc.XJCTask",
-					classpath: configurations.jaxb.asPath
-			mkdir(dir: sourcesDir)
-			mkdir(dir: classesDir)
-
-			xjc(destdir: sourcesDir, schema: schema,
-					package: "com.thomsonreuters.extractvalidator.wsdl") {
-				arg(value: "-wsdl")
-				produces(dir: sourcesDir, includes: "**/*.java")
-			}
-
-			javac(destdir: classesDir, source: 1.8, target: 1.8, debug: true,
-					debugLevel: "lines,vars,source",
-					classpath: configurations.jaxb.asPath) {
-				src(path: sourcesDir)
-				include(name: "**/*.java")
-				include(name: "*.java")
-			}
-
-			copy(todir: classesDir) {
-				fileset(dir: sourcesDir, erroronmissingdir: false) {
-					exclude(name: "**/*.java")
-				}
-			}
-		}
-	}
-}
+//task genJaxb {
+//	ext.sourcesDir = "${buildDir}/generated-sources/jaxb"
+//	ext.classesDir = "${buildDir}/classes/jaxb"
+//	ext.schema = "https://det-cre-sat.onesourcetax.com/sabrix/services/taxcalculationservice/2011-09-01/taxcalculationservice?wsdl"
+//
+//	outputs.dir classesDir
+//
+//	doLast() {
+//		project.ant {
+//			taskdef name: "xjc", classname: "com.sun.tools.xjc.XJCTask",
+//					classpath: configurations.jaxb.asPath
+//			mkdir(dir: sourcesDir)
+//			mkdir(dir: classesDir)
+//
+//			xjc(destdir: sourcesDir, schema: schema,
+//					package: "com.thomsonreuters.extractvalidator.wsdl") {
+//				arg(value: "-wsdl")
+//				produces(dir: sourcesDir, includes: "**/*.java")
+//			}
+//
+//			javac(destdir: classesDir, source: 1.8, target: 1.8, debug: true,
+//					debugLevel: "lines,vars,source",
+//					classpath: configurations.jaxb.asPath) {
+//				src(path: sourcesDir)
+//				include(name: "**/*.java")
+//				include(name: "*.java")
+//			}
+//
+//			copy(todir: classesDir) {
+//				fileset(dir: sourcesDir, erroronmissingdir: false) {
+//					exclude(name: "**/*.java")
+//				}
+//			}
+//		}
+//	}
+//}
 // end::wsdl[]
 
 dependencies {
 	// Spring Boot.
 	compile('org.springframework.boot:spring-boot-starter-web')
 	compile('org.springframework.boot:spring-boot-starter-web-services')
+	compile('org.springframework.ws:spring-ws-security')
+	compile('org.apache.ws.security:wss4j:1.6.19')
 	compile('javax.json:javax.json-api:1.1.2')
 
 	// Swagger 2.
@@ -109,9 +111,9 @@ dependencies {
 
 	implementation 'org.springframework.ws:spring-ws-core'
 	// For Java 11:
-	implementation 'org.glassfish.jaxb:jaxb-runtime'
-	compile(files(genJaxb.classesDir).builtBy(genJaxb))
-
-	jaxb "com.sun.xml.bind:jaxb-xjc:2.1.7"
+//	implementation 'org.glassfish.jaxb:jaxb-runtime'
+//	compile(files(genJaxb.classesDir).builtBy(genJaxb))
+//
+//	jaxb "com.sun.xml.bind:jaxb-xjc:2.1.7"
 
 }
