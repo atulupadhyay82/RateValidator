@@ -30,6 +30,11 @@ public final class TestRun
 
 	private String testCompanyID;
 
+	private String externalCompanyID;
+	private String soapUser;
+	private String soapPassword;
+	private String soapUri;
+
 	/**
 	 * Extract config name, used to find the content extract.
 	 */

@@ -13,6 +13,8 @@ import com.thomsonreuters.extractvalidator.dto.extract.content.*;
 import com.thomsonreuters.extractvalidator.util.ExternalRestClient;
 import com.thomsonreuters.extractvalidator.util.LocationTreatmentBuilder;
 import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
+import com.thomsonreuters.extractvalidator.util.SoapClient;
+import com.thomsonreuters.extractvalidator.wsdl.*;
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,6 +74,9 @@ public final class TestRunnerService
 	 * Logging handle for this class
 	 */
 	private static final Logger LOGGER = ESAPI.getLogger(TestRunnerService.class);
+
+	@Autowired
+	private SoapClient soapClient;
 
 
 	/**
@@ -152,7 +157,7 @@ public final class TestRunnerService
 				// If cleanup model scenario is set, check to see if a model scenario with the same name did not get deleted in a previous run. Find it and delete it.
 				if (testRunData.getCleanupModelScenario())
 				{
-					cleanupOldModelScenario(testRunData);
+//					cleanupOldModelScenario(testRunData);
 				}
 
 				LOGGER.info(Logger.EVENT_UNSPECIFIED, "Running extract validation.");
@@ -165,7 +170,7 @@ public final class TestRunnerService
 				LOGGER.error(Logger.EVENT_FAILURE, "Something went wrong. Message: " + ex.getCause()+"\n"+ex.getStackTrace());
 			}
 			finally {
-				cleanupOldModelScenario(testRunData);
+//				cleanupOldModelScenario(testRunData);
 			}
 		}
 
@@ -244,6 +249,82 @@ public final class TestRunnerService
 		return externalRestClient.getUDSToken(userName,password,env);
 
 	}
+
+	private IndataType buildIndata(String externalCompanyID)
+	{
+		IndataType indata = new IndataType();
+		indata.setVersion(VersionType.G);
+		indata.setEXTERNALCOMPANYID(externalCompanyID);
+
+		IndataInvoiceType indataInvoice = new IndataInvoiceType();
+		indataInvoice.setCALCULATIONDIRECTION("F");
+		indataInvoice.setCOMPANYROLE("S");
+		indataInvoice.setCURRENCYCODE("USD");
+//		indataInvoice.setINVOICEDATE("2018-08-08");
+		indataInvoice.setISAUDITED("N");
+//		ZoneAddressType zoneAddressType = new ZoneAddressType();
+//		zoneAddressType.setCOUNTRY("UNITED STATES");
+//		zoneAddressType.setSTATE("NEW YORK");
+//		zoneAddressType.setCITY("NEW YORK");
+//		zoneAddressType.setPOSTCODE("10001");
+//		indataInvoice.setSHIPFROM(zoneAddressType);
+//		indataInvoice.setSHIPTO(zoneAddressType);
+		indataInvoice.setTRANSACTIONTYPE("GS");
+//		IndataLineType indataLineType = new IndataLineType();
+//		indataLineType.setID("1");
+//		indataLineType.setLINENUMBER(BigDecimal.valueOf(1));
+//		indataLineType.setGROSSAMOUNT("100");
+//		indataLineType.setPRODUCTCODE("clothes");
+//		indataInvoice.getLINE().add(indataLineType);
+
+		indata.getINVOICE().add(indataInvoice);
+		return indata;
+	}
+
+	private IndataInvoiceType getIndataInvoice(IndataType indata)
+	{
+		if (indata.getINVOICE().size()==1)
+			return indata.getINVOICE().get(0);
+		else
+		{
+			LOGGER.error(Logger.EVENT_FAILURE, "invoice number is not 1");
+			return null;
+		}
+	}
+
+	private ZoneAddressType buildZoneAddress(Address address)
+	{
+		ZoneAddressType zoneAddressType = new ZoneAddressType();
+		zoneAddressType.setCOUNTRY(address.getCountry());
+		zoneAddressType.setSTATE(address.getState());
+		zoneAddressType.setCITY(address.getCity());
+		zoneAddressType.setPOSTCODE(address.getPostalCode());
+		zoneAddressType.setGEOCODE(address.getGeocode());
+		return zoneAddressType;
+	}
+
+	private void setZoneAddress(IndataType indata, Address address)
+	{
+		ZoneAddressType zoneAddressType = buildZoneAddress(address);
+		getIndataInvoice(indata).setSHIPFROM(zoneAddressType);
+		getIndataInvoice(indata).setSHIPTO(zoneAddressType);
+	}
+
+	private void addInvoiceLines(IndataType indata, UiModelScenarioDetail uiModelScenarioDetail)
+	{
+		for (UiModelScenarioLine line: uiModelScenarioDetail.getScenarioLines())
+		{
+			IndataLineType indataLineType = new IndataLineType();
+			indataLineType.setID(String.valueOf(line.getLineNumber()));
+			indataLineType.setLINENUMBER(BigDecimal.valueOf(line.getLineNumber()));
+			indataLineType.setGROSSAMOUNT(line.getGrossAmount().toString());
+			indataLineType.setPRODUCTCODE(line.getProductCode());
+			getIndataInvoice(indata).getLINE().add(indataLineType);
+		}
+
+
+	}
+
 	/**
 	 * Verify the extract by building a model scenario for each address in the extract. Each line of the scenario will be built for each product in the extract.
 	 *
@@ -269,6 +350,8 @@ public final class TestRunnerService
 																									lineGrossAmounts,
 																									testRunData.getModelScenarioName(),
 																									taxType);
+
+		final IndataType indata = buildIndata(testRunData.getExternalCompanyID());
 
 		UiModelScenarioDetail newModelScenario;
 		int scenarioCounter = 1;
@@ -333,48 +416,66 @@ public final class TestRunnerService
 						continue;
 					}
 
+					setZoneAddress(indata, address);
+
 					effectiveDates=getEffectiveDate(locationTreatmentData);
 					for(LocalDate mDate:effectiveDates){
 						final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
 						final String scenarioDate = mDate.format(dateTimeFormatter);
-						LOGGER.info(Logger.EVENT_UNSPECIFIED,"The effective date for this jurisdiction: "+jurisdictionKey+" is: "+mDate);
+						LOGGER.info(Logger.EVENT_UNSPECIFIED,"The effective date for this jurisdiction: "+jurisdictionKey+" is: "+scenarioDate);
+
+						final DateTimeFormatter dateTimeFormatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+						final String scenarioDate1 = mDate.format(dateTimeFormatter1);
+						LOGGER.info(Logger.EVENT_UNSPECIFIED,"The effective date for this jurisdiction: "+jurisdictionKey+" is: "+scenarioDate1);
+						getIndataInvoice(indata).setINVOICEDATE(scenarioDate1);
 
 						uiModelScenarioDetail.setEffectiveDate(scenarioDate);
-						if (null == uiModelScenarioDetail.getScenarioId())
-						{
-							//LOGGER.info(Logger.EVENT_UNSPECIFIED, "Creating new scenario: " + uiModelScenarioDetail.getScenarioName());
-							newModelScenario = externalRestClient.createModelScenario(testRunData, companyID, uiModelScenarioDetail);
-							uiModelScenarioDetail.setScenarioId(newModelScenario.getScenarioId());
+						addInvoiceLines(indata, uiModelScenarioDetail);
 
-							for (final UiModelScenarioLine line : uiModelScenarioDetail.getScenarioLines())
-							{
-								for (final UiModelScenarioLine savedLine : newModelScenario.getScenarioLines())
-								{
-									if (line.getLineNumber().equals(savedLine.getLineNumber()))
-									{
-										line.setScenarioLineId(savedLine.getScenarioLineId());
-									}
-								}
-							}
-							scenarioCounter++;
-						}
-						else
-						{
-							LOGGER.info(Logger.EVENT_UNSPECIFIED, "Updating scenario: " + uiModelScenarioDetail.getScenarioName());
-							scenarioCounter++;
-							if(scenarioCounter<=testRunData.getSkipScenarios()){
-								LOGGER.info(Logger.EVENT_UNSPECIFIED,"Skipping Model scenario - "+ scenarioCounter);
-								continue;
-							}
+//						if (null == uiModelScenarioDetail.getScenarioId())
+//						{
+//							//LOGGER.info(Logger.EVENT_UNSPECIFIED, "Creating new scenario: " + uiModelScenarioDetail.getScenarioName());
+//							newModelScenario = externalRestClient.createModelScenario(testRunData, companyID, uiModelScenarioDetail);
+//							uiModelScenarioDetail.setScenarioId(newModelScenario.getScenarioId());
+//
+//							for (final UiModelScenarioLine line : uiModelScenarioDetail.getScenarioLines())
+//							{
+//								for (final UiModelScenarioLine savedLine : newModelScenario.getScenarioLines())
+//								{
+//									if (line.getLineNumber().equals(savedLine.getLineNumber()))
+//									{
+//										line.setScenarioLineId(savedLine.getScenarioLineId());
+//									}
+//								}
+//							}
+//							scenarioCounter++;
+//						}
+//						else
+//						{
+//							LOGGER.info(Logger.EVENT_UNSPECIFIED, "Updating scenario: " + uiModelScenarioDetail.getScenarioName());
+//							scenarioCounter++;
+//							if(scenarioCounter<=testRunData.getSkipScenarios()){
+//								LOGGER.info(Logger.EVENT_UNSPECIFIED,"Skipping Model scenario - "+ scenarioCounter);
+//								continue;
+//							}
+//
+//							externalRestClient.updateModelScenario(testRunData, companyID, uiModelScenarioDetail);
+//						}
 
-							externalRestClient.updateModelScenario(testRunData, companyID, uiModelScenarioDetail);
-						}
+//						LOGGER.info(Logger.EVENT_UNSPECIFIED, "Running Model scenario - " + scenarioCounter + " : " +uiModelScenarioDetail.getScenarioName()+ " for address with Key "+ address.getAddressKey());
 
-						LOGGER.info(Logger.EVENT_UNSPECIFIED, "Running Model scenario - " + scenarioCounter + " : " +uiModelScenarioDetail.getScenarioName()+ " for address with Key "+ address.getAddressKey());
+//						final UiScenarioResult scenarioResult = externalRestClient.runModelScenario(testRunData, uiModelScenarioDetail.getScenarioId().toString(), companyID);
+						final TaxCalculationResponse taxCalculationResponse = soapClient.sendTaxCalcRequest(
+								testRunData.getSoapUri(),
+								testRunData.getSoapUser(),
+								testRunData.getSoapPassword(),
+								indata);
+						scenarioCounter++;
+						if (!taxCalculationResponse.getOUTDATA().getREQUESTSTATUS().isISSUCCESS())
+							LOGGER.error(Logger.EVENT_FAILURE, "Get tax calculation response failed!");
 
-						final UiScenarioResult scenarioResult = externalRestClient.runModelScenario(testRunData, uiModelScenarioDetail.getScenarioId().toString(), companyID);
 						LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing scenario rate to extract rate for location.");
-						List<TestCase> returnedResult=compareScenarioAndExtract(scenarioResult, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate,scenarioCounter);
+						List<TestCase> returnedResult=compareScenarioAndExtract(null, taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate,scenarioCounter);
 						testCases.addAll(returnedResult);
 						appendResultToFile(returnedResult,outputFile);
 			}
@@ -446,25 +547,33 @@ public final class TestRunnerService
 	 * @return Return a set of test cases, one for each product.
 	 */
 	private List<TestCase> compareScenarioAndExtract(final UiScenarioResult scenarioResult,
+													 final TaxCalculationResponse taxCalculationResponse,
 													 final UiModelScenarioDetail modelScenarioDetail,
 													 final String productCategoryName,
 													 final LocationTreatmentData locationTreatmentData,
 													 final LocalDate effectiveDate,
 													 final int scenarioCounter)
 	{
-		final Set<String> lineGrossAmounts = new HashSet<>();
+//		final Set<String> lineGrossAmounts = new HashSet<>();
+		final Set<String> lineGrossAmounts1 = new HashSet<>();
 
-		for (final UiLineTaxDetail lineDetail : scenarioResult.getInvoiceTaxDetail().getLineTaxDetails())
+//		for (final UiLineTaxDetail lineDetail : scenarioResult.getInvoiceTaxDetail().getLineTaxDetails())
+//		{
+//			lineGrossAmounts.add(lineDetail.getGrossAmount());
+//		}
+
+		for (final OutdataLineType line: taxCalculationResponse.getOUTDATA().getINVOICE().get(0).getLINE())
 		{
-			lineGrossAmounts.add(lineDetail.getGrossAmount());
+			lineGrossAmounts1.add(line.getGROSSAMOUNT());
 		}
 
-		final Map<String, BigDecimal> scenarioProductRateMap = buildScenarioProductRateMap(scenarioResult, modelScenarioDetail.getScenarioLines());
-		final Map<String, BigDecimal> extractProductRateMap = buildExtractProductRateMap(locationTreatmentData, productCategoryName,effectiveDate, lineGrossAmounts);
+//		final Map<String, BigDecimal> scenarioProductRateMap = buildScenarioProductRateMap(scenarioResult, modelScenarioDetail.getScenarioLines());
+		final Map<String, BigDecimal> scenarioProductRateMap1 = buildScenarioProductRateMap1(taxCalculationResponse, modelScenarioDetail.getScenarioLines());
+		final Map<String, BigDecimal> extractProductRateMap = buildExtractProductRateMap(locationTreatmentData, productCategoryName,effectiveDate, lineGrossAmounts1);
 
 		final List<TestCase> testCases = new LinkedList<>();
 
-		for (final Map.Entry<String, BigDecimal> scenarioEntry : scenarioProductRateMap.entrySet())
+		for (final Map.Entry<String, BigDecimal> scenarioEntry : scenarioProductRateMap1.entrySet())
 		{
 			for (final Map.Entry<String, BigDecimal> extractEntry : extractProductRateMap.entrySet())
 			{
@@ -524,6 +633,38 @@ public final class TestRunnerService
 		return productRateMap;
 	}
 
+	private Map<String, BigDecimal> buildScenarioProductRateMap1(final TaxCalculationResponse taxCalculationResponse, final List<UiModelScenarioLine> lines)
+	{
+		final Map<String, BigDecimal> productRateMap = new HashMap<>();
+		//final Map<String, String> productRuleOrder= new HashMap<>();
+
+		for (final UiModelScenarioLine scenarioLine : lines)
+		{
+			for (final OutdataLineType lineTaxDetail: taxCalculationResponse.getOUTDATA().getINVOICE().get(0).getLINE())
+			{
+				if (lineTaxDetail.getLINENUMBER().compareTo(BigDecimal.valueOf(scenarioLine.getLineNumber())) == 0)
+				{
+					BigDecimal accumulatedTaxAmount = new BigDecimal(lineTaxDetail.getTOTALTAXAMOUNT());
+					String productRuleOrders="";
+
+
+//					for (final UiAuthorityTaxDetail authorityTaxDetail : lineTaxDetail.getAuthorityTaxDetails())
+//					{
+//
+//						accumulatedTaxAmount = accumulatedTaxAmount.add(BigDecimal.valueOf(Double.parseDouble(authorityTaxDetail.getTaxAmount())));
+//						//productRuleOrders= productRuleOrders+ authorityTaxDetail.getRuleOrder();
+//					}
+
+					productRateMap.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGROSSAMOUNT(), accumulatedTaxAmount);
+					//productRuleOrder.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGrossAmount(),productRuleOrders);
+
+					break;
+				}
+			}
+		}
+		//LOGGER.info(Logger.EVENT_UNSPECIFIED, "rule order :  "+productRuleOrder);
+		return productRateMap;
+	}
 
 	/**
 	 * Build the map of products and rates for those products in the extract.

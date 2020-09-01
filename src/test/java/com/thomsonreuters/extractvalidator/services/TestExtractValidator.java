@@ -6,9 +6,14 @@ import com.google.gson.GsonBuilder;
 import com.thomsonreuters.extractvalidator.dto.RunResults;
 import com.thomsonreuters.extractvalidator.dto.TestCase;
 import com.thomsonreuters.extractvalidator.dto.TestRun;
+import com.thomsonreuters.extractvalidator.util.ExternalRestClient;
+import com.thomsonreuters.extractvalidator.util.SoapClient;
+import com.thomsonreuters.extractvalidator.wsdl.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.owasp.esapi.ESAPI;
+import org.owasp.esapi.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,6 +27,7 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import java.io.*;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,9 +38,12 @@ import java.util.TreeSet;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 public class TestExtractValidator {
+    private static final Logger LOG = ESAPI.getLogger(TestExtractValidator.class);
+
 
     @Autowired
     private RestTemplate testRestTemplate;
+
 
     private TestRun requestBean;
 
@@ -57,26 +66,41 @@ public class TestExtractValidator {
         TestRun requestBean= new TestRun();
 
         requestBean.setCleanupModelScenario(true);
-       //requestBean.setContentExtractBaseUrl("http://cre-sdm2-alb-1249178167.us-east-1.elb.amazonaws.com/");
+//        requestBean.setContentExtractBaseUrl("http://cre-sdm2-alb-1249178167.us-east-1.elb.amazonaws.com/"); // with derek code
+        requestBean.setContentExtractBaseUrl("https://cre-api-sat.onesourcetax.com/");
         //requestBean.setContentExtractBaseUrl("http://localhost:8101");
-         requestBean.setContentExtractBaseUrl("https://cre-api-qa.onesourcetax.com/");
+        //requestBean.setContentExtractBaseUrl("https://cre-api-qa.onesourcetax.com/"); // no derek
         requestBean.setDeterminationBaseUrl("https://det-cre-sat.onesourcetax.com/");
         List<String> lineGrossAmount =new ArrayList<String>();
 
+        // AZ amounts
+//        lineGrossAmount.add("400");
+//        lineGrossAmount.add("7000");
+//        lineGrossAmount.add("36000");
+        // DC amounts
+//        lineGrossAmount.add("100");
+//        lineGrossAmount.add("10000");
+        // TN amounts
+        lineGrossAmount.add("100");
+        lineGrossAmount.add("350");
         lineGrossAmount.add("1000");
+        lineGrossAmount.add("2000");
+        lineGrossAmount.add("10000");
+
 
 //        lineGrossAmount.add("36000");
         requestBean.setLineGrossAmounts(lineGrossAmount);
         requestBean.setModelScenarioName("Tier_Model");
        requestBean.setServicePassword("e95XnPgNsDVxpPQP");
-        //requestBean.setServicePassword("password");
+//        requestBean.setServicePassword("password");
         requestBean.setServiceUser("^elvis-rest-client");
+//        requestBean.setServiceUser("^dba");
         requestBean.setSkipScenarios(0);
 //        requestBean.setTestCompanyName("VTest Industries");
 //        requestBean.setTestExtractConfigName("VTestVE-TaxType");
 //        requestBean.setTestCompanyID("7760");
 //        requestBean.setTestCompanyUUID("1fb52dcb-d2aa-4857-987d-5da979948a59");
-        requestBean.setTestExtractConfigName("WayfairUAT_45_UT");
+        requestBean.setTestExtractConfigName("WayfairUAT_43_TN");
         requestBean.setTestCompanyName("01_Wayfair_US");
         requestBean.setTestCompanyID("18145");
         requestBean.setTestCompanyUUID("67e8a3b4-f2f1-4286-90c4-611c5dbce973");
@@ -87,19 +111,25 @@ public class TestExtractValidator {
         requestBean.setEnvCredentialsPassword("Dec@1234");
         requestBean.setEnvironmentMS("SAT");
 
+        requestBean.setExternalCompanyID("1005307421-100"); // 01_Wayfair_US on SAT
+        requestBean.setSoapUser("^CRETestTool");
+        requestBean.setSoapPassword("password");
+        requestBean.setSoapUri("https://det-legacy-sat.onesourcetax.com/sabrix/services/taxcalculationservice/2011-09-01/taxcalculationservice");
+
+
        // requestBean.setTestCompanyID("249");
 
         Set<String> jurList=new TreeSet<>();
-       File f1=new File("C:\\dell\\functional\\622\\diff.txt"); //Creation of File Descriptor for input file
-        String[] words=null;  //Intialize the word Array
-        FileReader fr = null;  //Creation of File Reader object
-        try {
-            fr = new FileReader(f1);
-            BufferedReader br = new BufferedReader(fr); //Creation of BufferedReader object
-            String line;
+       File f1=new File("C:\\Users\\C268878\\regression\\derek\\tmp1.txt"); //Creation of File Descriptor for input file
+            String[] words=null;  //Intialize the word Array
+            FileReader fr = null;  //Creation of File Reader object
+            try {
+                fr = new FileReader(f1);
+                BufferedReader br = new BufferedReader(fr); //Creation of BufferedReader object
+                String line;
 
 
-            while((line=br.readLine())!=null){
+                while((line=br.readLine())!=null){
                 words=line.split(":");
                 jurList.add(words[1]);
             }
@@ -118,7 +148,7 @@ public class TestExtractValidator {
 //        jKey.add("4728128362363438803");
 //        jKey.add("7375307450378410534");
 
-    requestBean.setJurisdictionKeys(jKey);
+//    requestBean.setJurisdictionKeys(jKey);
 
         List<String> postalList=new ArrayList<String>();
         postalList.add("63069");
