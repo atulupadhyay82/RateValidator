@@ -245,10 +245,10 @@ public final class TestRunnerService
 		return testCompany;
 	}
 
-	public String getUDSToken(String userName, String password, String env){
-		return externalRestClient.getUDSToken(userName,password,env);
-
-	}
+//	public String getUDSToken(String userName, String password, String env){
+//		return externalRestClient.getUDSToken(userName,password,env);
+//
+//	}
 
 	private IndataType buildIndata(String externalCompanyID)
 	{
@@ -299,7 +299,15 @@ public final class TestRunnerService
 		zoneAddressType.setSTATE(address.getState());
 		zoneAddressType.setCITY(address.getCity());
 		zoneAddressType.setPOSTCODE(address.getPostalCode());
-		zoneAddressType.setGEOCODE(address.getGeocode());
+		String postalRange= address.getGeocode();
+		String splitRange[];
+		String geocode=null;
+
+		if(postalRange != null){
+			splitRange=postalRange.split("-");
+			geocode=splitRange[0].trim();
+		}
+		zoneAddressType.setGEOCODE(geocode);
 		return zoneAddressType;
 	}
 
@@ -308,6 +316,21 @@ public final class TestRunnerService
 		ZoneAddressType zoneAddressType = buildZoneAddress(address);
 		getIndataInvoice(indata).setSHIPFROM(zoneAddressType);
 		getIndataInvoice(indata).setSHIPTO(zoneAddressType);
+	}
+
+	private void setTaxType (IndataType indata, String taxType)
+	{
+		AddressType addressType= new AddressType();
+		addressType.setALL(taxType);
+		addressType.setCITY(taxType);
+		addressType.setCOUNTRY(taxType);
+		addressType.setCOUNTY(taxType);
+		addressType.setPROVINCE(taxType);
+		addressType.setDISTRICT(taxType);
+		addressType.setGEOCODE(taxType);
+		addressType.setPOSTCODE(taxType);
+		addressType.setSTATE(taxType);
+		getIndataInvoice(indata).setTAXTYPE(addressType);
 	}
 
 	private void addInvoiceLines(IndataType indata, UiModelScenarioDetail uiModelScenarioDetail)
@@ -368,6 +391,7 @@ public final class TestRunnerService
 
 		Collections.sort(addresses);
 		LOGGER.info(Logger.EVENT_UNSPECIFIED,"Skipped list : "+jurisdictionList);
+		setTaxType(indata,taxType);
 
 
 		for (final Address address : addresses)
@@ -420,51 +444,16 @@ public final class TestRunnerService
 
 					effectiveDates=getEffectiveDate(locationTreatmentData);
 					for(LocalDate mDate:effectiveDates){
-						final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
-						final String scenarioDate = mDate.format(dateTimeFormatter);
-						LOGGER.info(Logger.EVENT_UNSPECIFIED,"The effective date for this jurisdiction: "+jurisdictionKey+" is: "+scenarioDate);
 
 						final DateTimeFormatter dateTimeFormatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 						final String scenarioDate1 = mDate.format(dateTimeFormatter1);
 						LOGGER.info(Logger.EVENT_UNSPECIFIED,"The effective date for this jurisdiction: "+jurisdictionKey+" is: "+scenarioDate1);
 						getIndataInvoice(indata).setINVOICEDATE(scenarioDate1);
 
-						uiModelScenarioDetail.setEffectiveDate(scenarioDate);
+					//	uiModelScenarioDetail.setEffectiveDate(scenarioDate);
 						addInvoiceLines(indata, uiModelScenarioDetail);
 
-//						if (null == uiModelScenarioDetail.getScenarioId())
-//						{
-//							//LOGGER.info(Logger.EVENT_UNSPECIFIED, "Creating new scenario: " + uiModelScenarioDetail.getScenarioName());
-//							newModelScenario = externalRestClient.createModelScenario(testRunData, companyID, uiModelScenarioDetail);
-//							uiModelScenarioDetail.setScenarioId(newModelScenario.getScenarioId());
-//
-//							for (final UiModelScenarioLine line : uiModelScenarioDetail.getScenarioLines())
-//							{
-//								for (final UiModelScenarioLine savedLine : newModelScenario.getScenarioLines())
-//								{
-//									if (line.getLineNumber().equals(savedLine.getLineNumber()))
-//									{
-//										line.setScenarioLineId(savedLine.getScenarioLineId());
-//									}
-//								}
-//							}
-//							scenarioCounter++;
-//						}
-//						else
-//						{
-//							LOGGER.info(Logger.EVENT_UNSPECIFIED, "Updating scenario: " + uiModelScenarioDetail.getScenarioName());
-//							scenarioCounter++;
-//							if(scenarioCounter<=testRunData.getSkipScenarios()){
-//								LOGGER.info(Logger.EVENT_UNSPECIFIED,"Skipping Model scenario - "+ scenarioCounter);
-//								continue;
-//							}
-//
-//							externalRestClient.updateModelScenario(testRunData, companyID, uiModelScenarioDetail);
-//						}
-
-//						LOGGER.info(Logger.EVENT_UNSPECIFIED, "Running Model scenario - " + scenarioCounter + " : " +uiModelScenarioDetail.getScenarioName()+ " for address with Key "+ address.getAddressKey());
-
-//						final UiScenarioResult scenarioResult = externalRestClient.runModelScenario(testRunData, uiModelScenarioDetail.getScenarioId().toString(), companyID);
+						LOGGER.info(Logger.EVENT_UNSPECIFIED, "Creating a scenario in determination :"+ scenarioCounter);
 						final TaxCalculationResponse taxCalculationResponse = soapClient.sendTaxCalcRequest(
 								testRunData.getSoapUri(),
 								testRunData.getSoapUser(),
@@ -482,13 +471,7 @@ public final class TestRunnerService
 		}
 			}
 		}
-		if (null != uiModelScenarioDetail.getScenarioId())
-		{
-			scenarioIds.add(uiModelScenarioDetail.getScenarioId().toString());
 
-			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Deleting scenario.");
-			externalRestClient.deleteModelScenario(testRunData, scenarioIds);
-		}
 	}
 
 	private void appendResultToFile(List<TestCase> testCases, File outputFile) {
@@ -772,13 +755,10 @@ public final class TestRunnerService
 			{
 
 				accumulatedTaxAmount = accumulatedTaxAmount.add(calculateTaxAmountFromExtract(treatment.getRate(),grossAmount));
-				LOGGER.info(Logger.EVENT_UNSPECIFIED,"gross amount is: "+grossAmount);
-
 			}
 			else
 			{
 				BigDecimal tierAmount= BigDecimal.valueOf(0);
-				LOGGER.info(Logger.EVENT_UNSPECIFIED,"gross amount is: "+grossAmount);
 				for (final Tier tier : treatment.getTierList())
 				{
 					if(treatment.getSplitType().equalsIgnoreCase("G")) {
