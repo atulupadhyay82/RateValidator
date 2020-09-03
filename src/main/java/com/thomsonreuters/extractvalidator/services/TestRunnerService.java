@@ -3,6 +3,8 @@ package com.thomsonreuters.extractvalidator.services;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
+import com.thomsonreuters.extractvalidator.dao.SrcRuleQualifierDao;
 import com.thomsonreuters.extractvalidator.dto.RunResults;
 import com.thomsonreuters.extractvalidator.dto.TestCase;
 import com.thomsonreuters.extractvalidator.dto.TestRun;
@@ -49,6 +51,11 @@ public final class TestRunnerService
 	private static final String PASSED = "PASSED";
 
 	/**
+	 * Test case status for when rates don't match due to rule qualifier.
+	 */
+	private static final String RULEQUALIFIER = "RULEQUALIFIER";
+
+	/**
 	 * BigDecimal comparison result constant for greater than.
 	 */
 	private static final List<Integer> IS_GREATER_THAN_EQUAL_TO = new ArrayList<>();
@@ -65,9 +72,44 @@ public final class TestRunnerService
 	private static final double RATE_MULTIPLIER = 100.0;
 
 	/**
+	 * hyphen delimilter
+	 */
+	private static final String HYPHEN_DELIMITER = "-";
+
+	/**
+	 *
+	 */
+	private static final String TAX = "TAX";
+
+	/**
+	 * Cascading rule found for admin authority
+	 */
+	private static final String CASCADING_RULE_WAS_FOUND = "Cascading Rule was found";
+
+	/**
+	 *
+	 */
+	private  static final String RULE_NO_TAX = "RULE_NO_TAX";
+
+	/**
+	 *
+	 */
+	private static final String RULE_NO_TAX_AUTHORITY = "Authority:";
+
+	/**
+	 *
+	 */
+	private  static final String ADMIN_AUTHORITY = "authority";
+
+
+	/**
 	 * The rest client to use when making REST calls to Content Extract endpoints or Determination Endpoints.
 	 */
 	private final ExternalRestClient externalRestClient;
+
+	@Autowired
+	private SrcRuleQualifierDao srcRuleQualifierDao;
+
 
 	/**
 	 * Logging handle for this class
@@ -555,7 +597,8 @@ public final class TestRunnerService
 		{
 			for (final Map.Entry<String, BigDecimal> extractEntry : extractProductRateMap.entrySet())
 			{
-				if (extractEntry.getKey().equals(scenarioEntry.getKey()))
+				String scenarioKey = scenarioEntry.getKey().startsWith(RULEQUALIFIER) ? scenarioEntry.getKey().substring(RULEQUALIFIER.length()) : scenarioEntry.getKey();
+				if (extractEntry.getKey().equals(scenarioKey))
 				{
 					final TestCase testCase = new TestCase();
 
@@ -622,6 +665,8 @@ public final class TestRunnerService
 			{
 				if (lineTaxDetail.getLINENUMBER().compareTo(BigDecimal.valueOf(scenarioLine.getLineNumber())) == 0)
 				{
+					List<OutdataTaxType> taxTypeList = lineTaxDetail.getTAX();
+
 					BigDecimal accumulatedTaxAmount = new BigDecimal(lineTaxDetail.getTOTALTAXAMOUNT());
 					String productRuleOrders="";
 
@@ -633,8 +678,54 @@ public final class TestRunnerService
 //						//productRuleOrders= productRuleOrders+ authorityTaxDetail.getRuleOrder();
 //					}
 
-					productRateMap.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGROSSAMOUNT(), accumulatedTaxAmount);
-					//productRuleOrder.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGrossAmount(),productRuleOrders);
+					boolean ruleExistsInRuleQualiier = false;
+					//Cascading rule used for admin authority, get authority name from the message
+					final Optional<MessageType> adminAuthMsgText = lineTaxDetail.getMESSAGE().stream().filter(
+							m -> m.getMESSAGETEXT().contains(CASCADING_RULE_WAS_FOUND)).findAny();
+					/* Authority having No tax rule not coming in the line item, just appear in the message only.
+					   fetch authorty name and rule order from the message
+					 */
+					final Optional<MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
+							m -> m.getCODE().equals(RULE_NO_TAX)).findAny();
+					for (final OutdataTaxType lineItem : taxTypeList)
+					{
+						BigDecimal ruleOrder = lineItem.getRULEORDER();
+						String authority = lineItem.getAUTHORITYNAME();
+
+						if (ruleNoTaxMsgText.isPresent())
+						{
+							final String msg = ruleNoTaxMsgText.get().getMESSAGETEXT();
+							ruleOrder = new BigDecimal(msg.substring(msg.lastIndexOf(":")+2));
+							authority = msg.substring(msg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, msg.lastIndexOf(TAX) + 3);
+						}
+						//If the rule order not exists in rule table, check admin authority rule
+						if (srcRuleQualifierDao.ruleOrderExistsInSrcRule(ruleOrder, authority) == 0)
+						{
+							// Get admin authority name from the response if any and use it to check rule qualifier
+							if (adminAuthMsgText.isPresent())
+							{
+								final String msg = adminAuthMsgText.get().getMESSAGETEXT();
+								authority = msg.substring(msg.lastIndexOf(ADMIN_AUTHORITY) + 10, msg.lastIndexOf(TAX) + 3);
+							}
+						}
+						if (srcRuleQualifierDao.ruleOrderExistsInRuleQualifier(ruleOrder,authority) > 0)
+						{
+							ruleExistsInRuleQualiier = true;
+							break;
+						}
+
+					}
+					//If rule exists in rule qualifier, prefix key with "RULEQUALIFIER"
+					if (ruleExistsInRuleQualiier)
+					{
+						productRateMap.put(RULEQUALIFIER+scenarioLine.getProductCode() + ":" + lineTaxDetail.getGROSSAMOUNT(), accumulatedTaxAmount);
+
+					} else
+					{
+						productRateMap.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGROSSAMOUNT(), accumulatedTaxAmount);
+						//productRuleOrder.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGrossAmount(),productRuleOrders);
+					}
+
 
 					break;
 				}
@@ -869,6 +960,7 @@ public final class TestRunnerService
 		testAddress.setState(locationTreatmentData.getAddress().getState());
 
 		testCase.setAddress(testAddress);
+
 		if (null == accumulatedTaxAmount)
 		{
 			testCase.setTestResult(FAILED);
@@ -884,6 +976,10 @@ public final class TestRunnerService
 			if (difference == 1 || difference == 0 || difference == -1) {
 				testCase.setTestResult(PASSED);
 				testCase.setMessage("Tax amount is: " + modelScenarioTaxAmount + " for Gross Amount: " + grossAmount);
+			} else if (scenarioEntry.getKey().startsWith(RULEQUALIFIER))
+			{
+				testCase.setTestResult(RULEQUALIFIER);
+				testCase.setMessage("The tax amouunt do not match Scenario tax amount due to rule qualifier");
 			} else {
 				testCase.setTestResult(FAILED);
 				testCase.setMessage("The tax amouunt do not match Scenario tax amount: " + modelScenarioTaxAmount + " Accumulated Tax amount: " + accumulatedTaxAmount);
