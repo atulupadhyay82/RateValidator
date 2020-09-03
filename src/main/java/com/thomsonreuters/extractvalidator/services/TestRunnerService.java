@@ -681,12 +681,12 @@ public final class TestRunnerService
 					boolean ruleExistsInRuleQualiier = false;
 					//Cascading rule used for admin authority, get authority name from the message
 					final Optional<MessageType> adminAuthMsgText = lineTaxDetail.getMESSAGE().stream().filter(
-							m -> m.getMESSAGETEXT().contains(CASCADING_RULE_WAS_FOUND)).findAny();
+							m -> m.getMESSAGETEXT().contains(CASCADING_RULE_WAS_FOUND)).findFirst();
 					/* Authority having No tax rule not coming in the line item, just appear in the message only.
 					   fetch authorty name and rule order from the message
 					 */
 					final Optional<MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
-							m -> m.getCODE().equals(RULE_NO_TAX)).findAny();
+							m -> m.getCODE().equals(RULE_NO_TAX)).findFirst();
 					for (final OutdataTaxType lineItem : taxTypeList)
 					{
 						BigDecimal ruleOrder = lineItem.getRULEORDER();
