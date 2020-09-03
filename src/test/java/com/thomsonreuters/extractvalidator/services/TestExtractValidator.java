@@ -6,9 +6,6 @@ import com.google.gson.GsonBuilder;
 import com.thomsonreuters.extractvalidator.dto.RunResults;
 import com.thomsonreuters.extractvalidator.dto.TestCase;
 import com.thomsonreuters.extractvalidator.dto.TestRun;
-import com.thomsonreuters.extractvalidator.util.ExternalRestClient;
-import com.thomsonreuters.extractvalidator.util.SoapClient;
-import com.thomsonreuters.extractvalidator.wsdl.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -27,7 +24,6 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import java.io.*;
-import java.math.BigDecimal;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,10 +63,10 @@ public class TestExtractValidator {
 
         requestBean.setCleanupModelScenario(true);
 //        requestBean.setContentExtractBaseUrl("http://cre-sdm2-alb-1249178167.us-east-1.elb.amazonaws.com/"); // with derek code
-        requestBean.setContentExtractBaseUrl("https://cre-api-sat.onesourcetax.com/");
+        requestBean.setContentExtractBaseUrl("https://cre-api-qa.onesourcetax.com/");
         //requestBean.setContentExtractBaseUrl("http://localhost:8101");
-        //requestBean.setContentExtractBaseUrl("https://cre-api-qa.onesourcetax.com/"); // no derek
-        requestBean.setDeterminationBaseUrl("https://det-cre-sat.onesourcetax.com/");
+//        //requestBean.setContentExtractBaseUrl("https://cre-api-qa.onesourcetax.com/"); // no derek
+//        requestBean.setDeterminationBaseUrl("https://det-cre-sat.onesourcetax.com/");
         List<String> lineGrossAmount =new ArrayList<String>();
 
         // AZ amounts
@@ -81,18 +77,13 @@ public class TestExtractValidator {
 //        lineGrossAmount.add("100");
 //        lineGrossAmount.add("10000");
         // TN amounts
-        lineGrossAmount.add("100");
-        lineGrossAmount.add("350");
+
         lineGrossAmount.add("1000");
-        lineGrossAmount.add("2000");
-        lineGrossAmount.add("10000");
-
-
 //        lineGrossAmount.add("36000");
         requestBean.setLineGrossAmounts(lineGrossAmount);
         requestBean.setModelScenarioName("Tier_Model");
-       requestBean.setServicePassword("e95XnPgNsDVxpPQP");
-//        requestBean.setServicePassword("password");
+     //  requestBean.setServicePassword("e95XnPgNsDVxpPQP");
+        requestBean.setServicePassword("password");
         requestBean.setServiceUser("^elvis-rest-client");
 //        requestBean.setServiceUser("^dba");
         requestBean.setSkipScenarios(0);
@@ -100,20 +91,22 @@ public class TestExtractValidator {
 //        requestBean.setTestExtractConfigName("VTestVE-TaxType");
 //        requestBean.setTestCompanyID("7760");
 //        requestBean.setTestCompanyUUID("1fb52dcb-d2aa-4857-987d-5da979948a59");
-        requestBean.setTestExtractConfigName("WayfairUAT_43_TN");
+        requestBean.setTestExtractConfigName("WayfairUAT_01_AL");
         requestBean.setTestCompanyName("01_Wayfair_US");
         requestBean.setTestCompanyID("18145");
         requestBean.setTestCompanyUUID("67e8a3b4-f2f1-4286-90c4-611c5dbce973");
        // requestBean.setProductCategoryName("Installation Service Charges - Separately Negotiated");
         requestBean.setTestRunNumber("1");
-        requestBean.setTaxType("SA");
-        requestBean.setEnvCredentialsID("Atul.Upadhyay.vbr");
-        requestBean.setEnvCredentialsPassword("Dec@1234");
-        requestBean.setEnvironmentMS("SAT");
+        requestBean.setTaxType("US");
+//        requestBean.setEnvCredentialsID("Atul.Upadhyay.vbr");
+//        requestBean.setEnvCredentialsPassword("Dec@1234");
+//        requestBean.setEnvironmentMS("SAT");
 
         requestBean.setExternalCompanyID("1005307421-100"); // 01_Wayfair_US on SAT
         requestBean.setSoapUser("^CRETestTool");
         requestBean.setSoapPassword("password");
+        requestBean.setInvoiceTaxCode("OUTOFSTATEOPTION");
+        requestBean.setLineTaxCode("OUTOFSTATEOPTION");
         requestBean.setSoapUri("https://det-legacy-sat.onesourcetax.com/sabrix/services/taxcalculationservice/2011-09-01/taxcalculationservice");
 
 

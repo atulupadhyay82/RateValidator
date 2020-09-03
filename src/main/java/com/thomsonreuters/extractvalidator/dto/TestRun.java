@@ -118,6 +118,10 @@ public final class TestRun
 
 	private String productCategoryName;
 
+	private String lineTaxCode;
+
+	private String invoiceTaxCode;
+
 
 
 	public TestRun(){}
