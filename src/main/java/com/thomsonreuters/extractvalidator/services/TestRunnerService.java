@@ -362,6 +362,7 @@ public final class TestRunnerService
 
 	private void addInvoiceLines(IndataType indata, UiModelScenarioDetail uiModelScenarioDetail, String lineTaxCode)
 	{
+		getIndataInvoice(indata).getLINE().clear();
 		for (UiModelScenarioLine line: uiModelScenarioDetail.getScenarioLines())
 		{
 			IndataLineType indataLineType = new IndataLineType();
@@ -372,8 +373,6 @@ public final class TestRunnerService
 			indataLineType.setTAXCODE(lineTaxCode);
 			getIndataInvoice(indata).getLINE().add(indataLineType);
 		}
-
-
 	}
 
 	/**
@@ -397,7 +396,7 @@ public final class TestRunnerService
 																									lineGrossAmounts,
 																									testRunData.getModelScenarioName(),
 																									taxType);
-
+		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Invoice line number: "+uiModelScenarioDetail.getScenarioLines().size());
 		final IndataType indata = buildIndata(testRunData.getExternalCompanyID());
 
 		final String invoiceTaxCode=testRunData.getInvoiceTaxCode();
@@ -421,6 +420,7 @@ public final class TestRunnerService
 
 		getIndataInvoice(indata).setTAXCODE(invoiceTaxCode);
 
+		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Total address number: "+addresses.size());
 		for (final Address address : addresses)
 		{
 			jurisdictionKey=address.getJurisdictionKey();
