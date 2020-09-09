@@ -387,10 +387,6 @@ public final class TestRunnerService
 													   final TestRun testRunData,
 													    final List<TestCase> testCases) throws Exception
 	{
-		final List<String> scenarioIds = new LinkedList<>();
-
-
-		//final List<ClientZone> countryList = externalRestClient.getCountries(testRunData);
 		final List<String> lineGrossAmounts = null == testRunData.getLineGrossAmounts() ? new LinkedList<>() : testRunData.getLineGrossAmounts();
 		final String companyID= testRunData.getTestCompanyID();
 		final String taxType=testRunData.getTaxType();
@@ -407,7 +403,6 @@ public final class TestRunnerService
 		final String invoiceTaxCode=testRunData.getInvoiceTaxCode();
 		final String lineTaxCode=testRunData.getLineTaxCode();
 
-		UiModelScenarioDetail newModelScenario;
 		int scenarioCounter = 1;
 		List<String> jurisdictionList =testRunData.getJurisdictionKeys();
 		List<String> postalcodeList=testRunData.getPostalCodeList();
@@ -423,9 +418,6 @@ public final class TestRunnerService
 		Collections.sort(addresses);
 		LOGGER.info(Logger.EVENT_UNSPECIFIED,"Skipped list : "+jurisdictionList);
 		setTaxType(indata,taxType);
-
-
-
 
 		getIndataInvoice(indata).setTAXCODE(invoiceTaxCode);
 
@@ -477,8 +469,6 @@ public final class TestRunnerService
 
 					setZoneAddress(indata, address,taxType);
 
-
-
 					effectiveDates=getEffectiveDate(locationTreatmentData);
 					for(LocalDate mDate:effectiveDates){
 
@@ -487,21 +477,23 @@ public final class TestRunnerService
 						LOGGER.info(Logger.EVENT_UNSPECIFIED,"The effective date for this jurisdiction: "+jurisdictionKey+" is: "+scenarioDate1);
 						getIndataInvoice(indata).setINVOICEDATE(scenarioDate1);
 
-					//	uiModelScenarioDetail.setEffectiveDate(scenarioDate);
 						addInvoiceLines(indata, uiModelScenarioDetail,lineTaxCode);
 
-						LOGGER.info(Logger.EVENT_UNSPECIFIED, "Creating a scenario in determination :"+ scenarioCounter);
+						LOGGER.info(Logger.EVENT_UNSPECIFIED,
+								String.format("Calling tax calculation api %s, invoice line count: %s", scenarioCounter,
+										getIndataInvoice(indata).getLINE().size()));
 						final TaxCalculationResponse taxCalculationResponse = soapClient.sendTaxCalcRequest(
 								testRunData.getSoapUri(),
 								testRunData.getSoapUser(),
 								testRunData.getSoapPassword(),
-								indata);
+								indata,
+								testRunData.getSoapTimeoutRetryNumber());
 						scenarioCounter++;
 						if (!taxCalculationResponse.getOUTDATA().getREQUESTSTATUS().isISSUCCESS())
 							LOGGER.error(Logger.EVENT_FAILURE, "Get tax calculation response failed!");
 
 						LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing scenario rate to extract rate for location.");
-						List<TestCase> returnedResult=compareScenarioAndExtract(null, taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate,scenarioCounter);
+						List<TestCase> returnedResult=compareScenarioAndExtract(taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate,scenarioCounter);
 						testCases.addAll(returnedResult);
 						appendResultToFile(returnedResult,outputFile);
 			}
@@ -559,35 +551,27 @@ public final class TestRunnerService
 	/**
 	 * Compare the model scenario results to the products and rates in the extract.
 	 *
-	 * @param scenarioResult The results from the model scenario calculation.
+	 * @param taxCalculationResponse The results from the model scenario calculation.
 	 * @param modelScenarioDetail The details of the model scenario.
 	 * @param locationTreatmentData The rates by authority and product from the extract.
 	 * @param effectiveDate The effective date used for the calculation.
 	 *
 	 * @return Return a set of test cases, one for each product.
 	 */
-	private List<TestCase> compareScenarioAndExtract(final UiScenarioResult scenarioResult,
-													 final TaxCalculationResponse taxCalculationResponse,
+	private List<TestCase> compareScenarioAndExtract(final TaxCalculationResponse taxCalculationResponse,
 													 final UiModelScenarioDetail modelScenarioDetail,
 													 final String productCategoryName,
 													 final LocationTreatmentData locationTreatmentData,
 													 final LocalDate effectiveDate,
 													 final int scenarioCounter)
 	{
-//		final Set<String> lineGrossAmounts = new HashSet<>();
 		final Set<String> lineGrossAmounts1 = new HashSet<>();
-
-//		for (final UiLineTaxDetail lineDetail : scenarioResult.getInvoiceTaxDetail().getLineTaxDetails())
-//		{
-//			lineGrossAmounts.add(lineDetail.getGrossAmount());
-//		}
 
 		for (final OutdataLineType line: taxCalculationResponse.getOUTDATA().getINVOICE().get(0).getLINE())
 		{
 			lineGrossAmounts1.add(line.getGROSSAMOUNT());
 		}
 
-//		final Map<String, BigDecimal> scenarioProductRateMap = buildScenarioProductRateMap(scenarioResult, modelScenarioDetail.getScenarioLines());
 		final Map<String, BigDecimal> scenarioProductRateMap1 = buildScenarioProductRateMap1(taxCalculationResponse, modelScenarioDetail.getScenarioLines());
 		final Map<String, BigDecimal> extractProductRateMap = buildExtractProductRateMap(locationTreatmentData, productCategoryName,effectiveDate, lineGrossAmounts1);
 
@@ -602,7 +586,7 @@ public final class TestRunnerService
 				{
 					final TestCase testCase = new TestCase();
 
-					buildTestCase(extractEntry, testCase, scenarioResult, scenarioEntry, effectiveDate, locationTreatmentData,scenarioCounter);
+					buildTestCase(extractEntry, testCase, scenarioEntry, effectiveDate, locationTreatmentData,scenarioCounter);
 					testCases.add(testCase);
 
 					break;
@@ -897,14 +881,12 @@ public final class TestRunnerService
 	 *
 	 * @param extractEntry The data product and rate from the extract.
 	 * @param testCase The test case to populate.
-	 * @param scenarioResult The calculate scenario result.
 	 * @param scenarioEntry The product and rate data from the scenario.
 	 * @param effectiveDate The effective date used for the calculation and the treatment assignment.
 	 * @param locationTreatmentData The location treatment data accumulated from the extract and holds the address and products to apply to the test case.
 	 */
 	private void buildTestCase(final Map.Entry<String, BigDecimal> extractEntry,
 							   final TestCase testCase,
-							   final UiScenarioResult scenarioResult,
 							   final Map.Entry<String, BigDecimal> scenarioEntry,
 							   final LocalDate effectiveDate,
 							   final LocationTreatmentData locationTreatmentData,
@@ -969,7 +951,7 @@ public final class TestRunnerService
 		else if (null == modelScenarioTaxAmount)
 		{
 			testCase.setTestResult(FAILED);
-			testCase.setMessage("Model Scenario failed, scenario messages: " + scenarioResult.getInvoiceTaxDetail().getMessages());
+			testCase.setMessage("Model Scenario failed, scenario messages: ");
 		}
 		else {
 			int difference = modelScenarioTaxAmount.subtract(accumulatedTaxAmount).setScale(0, RoundingMode.UP).intValue();

@@ -34,6 +34,7 @@ public final class TestRun
 	private String soapUser;
 	private String soapPassword;
 	private String soapUri;
+	private int soapTimeoutRetryNumber = 5;
 
 	/**
 	 * Extract config name, used to find the content extract.
