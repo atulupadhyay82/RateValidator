@@ -40,6 +40,7 @@ import java.util.*;
 @Service
 public final class TestRunnerService
 {
+
 	/**
 	 * Test case status for when rates don't match.
 	 */
@@ -54,6 +55,11 @@ public final class TestRunnerService
 	 * Test case status for when rates don't match due to rule qualifier.
 	 */
 	private static final String RULEQUALIFIER = "RULEQUALIFIER";
+
+	/**
+	 * Test case status to denote failure from Determination
+	 */
+	private static final String DETISSUE = "DETISSUE";
 
 	/**
 	 * BigDecimal comparison result constant for greater than.
@@ -490,18 +496,49 @@ public final class TestRunnerService
 								testRunData.getSoapTimeoutRetryNumber());
 						scenarioCounter++;
 						if (!taxCalculationResponse.getOUTDATA().getREQUESTSTATUS().isISSUCCESS())
+						{
 							LOGGER.error(Logger.EVENT_FAILURE, "Get tax calculation response failed!");
-
-						LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing scenario rate to extract rate for location.");
-						List<TestCase> returnedResult=compareScenarioAndExtract(taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate,scenarioCounter);
-						testCases.addAll(returnedResult);
-						appendResultToFile(returnedResult,outputFile);
+							updateDETErrorResponse(scenarioCounter, outputFile, locationTreatmentData, taxCalculationResponse.getOUTDATA().getREQUESTSTATUS());
+						}
+						else
+						{
+							LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing scenario rate to extract rate for location.");
+							List<TestCase> returnedResult = compareScenarioAndExtract(taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate, scenarioCounter);
+							testCases.addAll(returnedResult);
+							appendResultToFile(returnedResult, outputFile);
+						}
 			}
 		}
 			}
 		}
 
 	}
+
+
+	private void updateDETErrorResponse(final int scenarioCounter, final File outputFile, final LocationTreatmentData locationTreatmentData,
+								 final OutdataRequestStatusType requestStatus)
+	{
+		TestCase errorResult = new TestCase();
+		errorResult.setJurisdiction(locationTreatmentData.getJurisdictionNKey());
+		errorResult.setScenarioExecuted(scenarioCounter);
+		final TestAddress testAddress = new TestAddress();
+		testAddress.setCity(locationTreatmentData.getAddress().getCity());
+		testAddress.setCountry(locationTreatmentData.getAddress().getCountry());
+		testAddress.setDistrict(locationTreatmentData.getAddress().getDistrict());
+		testAddress.setGeocode(locationTreatmentData.getAddress().getGeocode());
+		testAddress.setPostalCode(locationTreatmentData.getAddress().getPostalCode());
+		testAddress.setCounty(locationTreatmentData.getAddress().getCounty());
+		testAddress.setProvince(locationTreatmentData.getAddress().getProvince());
+		testAddress.setState(locationTreatmentData.getAddress().getState());
+		errorResult.setAddress(testAddress);
+		if (requestStatus.getERROR() != null && requestStatus.getERROR().size() > 0)
+			errorResult.setMessage(requestStatus.getERROR().get(0).getCODE()+" - "+requestStatus.getERROR().get(0).getDESCRIPTION());
+		errorResult.setTestResult(DETISSUE);
+		List<TestCase> errorList= new ArrayList<>();
+		errorList.add(errorResult);
+		appendResultToFile(errorList, outputFile);
+	}
+
 
 	private void appendResultToFile(List<TestCase> testCases, File outputFile) {
 
