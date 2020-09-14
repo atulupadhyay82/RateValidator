@@ -40,7 +40,6 @@ import java.util.*;
 @Service
 public final class TestRunnerService
 {
-
 	/**
 	 * Test case status for when rates don't match.
 	 */
@@ -318,6 +317,7 @@ public final class TestRunnerService
 		ZoneAddressType zoneAddressType = new ZoneAddressType();
 		zoneAddressType.setCOUNTRY(address.getCountry());
 		zoneAddressType.setSTATE(address.getState());
+		zoneAddressType.setCOUNTY(address.getCounty());
 		zoneAddressType.setCITY(address.getCity());
 		zoneAddressType.setPOSTCODE(address.getPostalCode());
 		String postalRange= address.getGeocode();
