@@ -60,7 +60,6 @@ public final class TestRunnerService
 	 */
 	private static final String DETISSUE = "DETISSUE";
 
-
 	/**
 	 * BigDecimal comparison result constant for greater than.
 	 */
@@ -202,7 +201,7 @@ public final class TestRunnerService
 			try
 			{
 				LOGGER.info(Logger.EVENT_UNSPECIFIED, "Running extract validation.");
-				verifyContentExtractWithDetermination(extract, testRunData, testCases);
+				verifyContentExtractWithModelScenario(extract, testRunData, testCases);
 			}
 			catch (final Exception ex)
 			{
@@ -210,7 +209,9 @@ public final class TestRunnerService
 
 				LOGGER.error(Logger.EVENT_FAILURE, "Something went wrong. Message: " + ex.getCause()+"\n"+ex.getStackTrace());
 			}
-
+			finally {
+//				cleanupOldModelScenario(testRunData);
+			}
 		}
 
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "All runs complete, returning test cases.");
@@ -241,7 +242,33 @@ public final class TestRunnerService
 
 
 
+	/**
+	 * Find the correct company based on the name from the test run data and the list of companies returned from Determination.
+	 *
+	 * @param testRunData The test run data passed in.
+	 * @param companies The list of companies from Determination.
+	 *
+	 * @return A specific company that matches the name provided in the test run data.
+	 */
+	private UiCompany findTestCompany(final TestRun testRunData, final UiCompanyList companies)
+	{
+		UiCompany testCompany = null;
 
+		for (final UiCompany company : companies.getCompanies())
+		{
+			if (company.getCompanyName().equals(testRunData.getTestCompanyName()))
+			{
+				testCompany = company;
+			}
+		}
+
+		return testCompany;
+	}
+
+//	public String getUDSToken(String userName, String password, String env){
+//		return externalRestClient.getUDSToken(userName,password,env);
+//
+//	}
 
 	private IndataType buildIndata(String externalCompanyID)
 	{
@@ -253,8 +280,23 @@ public final class TestRunnerService
 		indataInvoice.setCALCULATIONDIRECTION("F");
 		indataInvoice.setCOMPANYROLE("S");
 		indataInvoice.setCURRENCYCODE("USD");
+//		indataInvoice.setINVOICEDATE("2018-08-08");
 		indataInvoice.setISAUDITED("N");
+//		ZoneAddressType zoneAddressType = new ZoneAddressType();
+//		zoneAddressType.setCOUNTRY("UNITED STATES");
+//		zoneAddressType.setSTATE("NEW YORK");
+//		zoneAddressType.setCITY("NEW YORK");
+//		zoneAddressType.setPOSTCODE("10001");
+//		indataInvoice.setSHIPFROM(zoneAddressType);
+//		indataInvoice.setSHIPTO(zoneAddressType);
 		indataInvoice.setTRANSACTIONTYPE("GS");
+//		IndataLineType indataLineType = new IndataLineType();
+//		indataLineType.setID("1");
+//		indataLineType.setLINENUMBER(BigDecimal.valueOf(1));
+//		indataLineType.setGROSSAMOUNT("100");
+//		indataLineType.setPRODUCTCODE("clothes");
+//		indataInvoice.getLINE().add(indataLineType);
+
 		indata.getINVOICE().add(indataInvoice);
 		return indata;
 	}
@@ -346,7 +388,7 @@ public final class TestRunnerService
 	 * @param testRunData The test run data passed in.
 	 *  @param testCases The list of test cases to populate.
 	 */
-	private void verifyContentExtractWithDetermination(final ContentExtract contentExtract,
+	private void verifyContentExtractWithModelScenario(final ContentExtract contentExtract,
 													   final TestRun testRunData,
 													    final List<TestCase> testCases) throws Exception
 	{
@@ -395,11 +437,14 @@ public final class TestRunnerService
 				continue;
 			}
 			else {
+				//LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building location treatment data for jurisdiction:"+ address.getJurisdictionKey());
+
 				final LocationTreatmentData locationTreatmentData = LocationTreatmentBuilder.buildLocationTreatmentData(address, contentExtract,taxType);
 
 				if ((!locationTreatmentData.getProductAuthorityData().isEmpty() || !locationTreatmentData.getProductJurisdictionData().isEmpty()))
 				{
 					LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building new scenario for Address: " + address.getPostalCode()+" and with jurisdiction : "+jurisdictionKey);
+					//uiModelScenarioDetail.setLocationList(ModelScenarioUtil.buildLocations(address, countryList,testRunData.getTestExtractConfigName()));
 					if(address.getPostalCode()!=null && address.getGeocode()!=null){
 						if(jurisdictionMap.get(jurisdictionKey)!=null){
 							String value= jurisdictionMap.get(jurisdictionKey) +"GEOCODE";
@@ -429,6 +474,7 @@ public final class TestRunnerService
 					}
 
 					setZoneAddress(indata, address,taxType);
+
 					effectiveDates=getEffectiveDate(locationTreatmentData);
 					for(LocalDate mDate:effectiveDates){
 
@@ -440,16 +486,15 @@ public final class TestRunnerService
 						addInvoiceLines(indata, uiModelScenarioDetail,lineTaxCode);
 
 						LOGGER.info(Logger.EVENT_UNSPECIFIED,
-								String.format("Calling tax calculation api %s, invoice line count: %s", scenarioCounter, getIndataInvoice(indata).getLINE().size()));
+								String.format("Calling tax calculation api %s, invoice line count: %s", scenarioCounter,
+										getIndataInvoice(indata).getLINE().size()));
 						final TaxCalculationResponse taxCalculationResponse = soapClient.sendTaxCalcRequest(
 								testRunData.getSoapUri(),
 								testRunData.getSoapUser(),
 								testRunData.getSoapPassword(),
 								indata,
 								testRunData.getSoapTimeoutRetryNumber());
-
 						scenarioCounter++;
-
 						if (!taxCalculationResponse.getOUTDATA().getREQUESTSTATUS().isISSUCCESS())
 						{
 							LOGGER.error(Logger.EVENT_FAILURE, "Get tax calculation response failed!");
@@ -457,7 +502,7 @@ public final class TestRunnerService
 						}
 						else
 						{
-							LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing determination rate to extract rate for location.");
+							LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing scenario rate to extract rate for location.");
 							List<TestCase> returnedResult = compareScenarioAndExtract(taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate, scenarioCounter);
 							testCases.addAll(returnedResult);
 							appendResultToFile(returnedResult, outputFile);
@@ -946,8 +991,8 @@ public final class TestRunnerService
 			testCase.setMessage("Model Scenario failed, scenario messages: ");
 		}
 		else {
-			double difference = modelScenarioTaxAmount.subtract(accumulatedTaxAmount).setScale(3, RoundingMode.CEILING).doubleValue();
-			if (difference <= 0.001 && difference >= -0.001) {
+			int difference = modelScenarioTaxAmount.subtract(accumulatedTaxAmount).setScale(0, RoundingMode.UP).intValue();
+			if (difference == 1 || difference == 0 || difference == -1) {
 				testCase.setTestResult(PASSED);
 				testCase.setMessage("Tax amount is: " + modelScenarioTaxAmount + " for Gross Amount: " + grossAmount);
 			} else if (scenarioEntry.getKey().startsWith(RULEQUALIFIER))
