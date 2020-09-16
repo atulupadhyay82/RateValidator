@@ -3,7 +3,6 @@ package com.thomsonreuters.extractvalidator.services;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
 import com.thomsonreuters.extractvalidator.dao.SrcRuleQualifierDao;
 import com.thomsonreuters.extractvalidator.dto.RunResults;
 import com.thomsonreuters.extractvalidator.dto.TestCase;
@@ -929,8 +928,8 @@ public final class TestRunnerService
 							   final LocationTreatmentData locationTreatmentData,
 							   final int scenarioCounter)
 	{
-		final BigDecimal modelScenarioTaxAmount = scenarioEntry.getValue();
-		final BigDecimal accumulatedTaxAmount = extractEntry.getValue();
+		final BigDecimal modelScenarioTaxAmount = scenarioEntry.getValue().setScale(2, RoundingMode.HALF_UP);
+		final BigDecimal accumulatedTaxAmount = extractEntry.getValue().setScale(2, RoundingMode.HALF_UP);
 		final int splitIndex = extractEntry.getKey().indexOf(':');
 		final String productCode = extractEntry.getKey().substring(0, splitIndex);
 		final String grossAmount = extractEntry.getKey().substring(splitIndex + 1);
@@ -991,8 +990,8 @@ public final class TestRunnerService
 			testCase.setMessage("Model Scenario failed, scenario messages: ");
 		}
 		else {
-			int difference = modelScenarioTaxAmount.subtract(accumulatedTaxAmount).setScale(0, RoundingMode.UP).intValue();
-			if (difference == 1 || difference == 0 || difference == -1) {
+			double difference = modelScenarioTaxAmount.subtract(accumulatedTaxAmount).doubleValue();
+			if (difference <= 0.01 && difference >= -0.01) {
 				testCase.setTestResult(PASSED);
 				testCase.setMessage("Tax amount is: " + modelScenarioTaxAmount + " for Gross Amount: " + grossAmount);
 			} else if (scenarioEntry.getKey().startsWith(RULEQUALIFIER))

@@ -93,13 +93,13 @@ public class TestExtractValidator {
 //        requestBean.setTestExtractConfigName("VTestVE-TaxType");
 //        requestBean.setTestCompanyID("7760");
 //        requestBean.setTestCompanyUUID("1fb52dcb-d2aa-4857-987d-5da979948a59");
-        requestBean.setTestExtractConfigName("WayfairUAT_01_AL");
+        requestBean.setTestExtractConfigName("WayfairUAT_34_NC");
         requestBean.setTestCompanyName("01_Wayfair_US");
         requestBean.setTestCompanyID("18145");
         requestBean.setTestCompanyUUID("67e8a3b4-f2f1-4286-90c4-611c5dbce973");
        // requestBean.setProductCategoryName("Installation Service Charges - Separately Negotiated");
         requestBean.setTestRunNumber("1");
-        requestBean.setTaxType("US");
+        requestBean.setTaxType("SA");
 //        requestBean.setEnvCredentialsID("Atul.Upadhyay.vbr");
 //        requestBean.setEnvCredentialsPassword("Dec@1234");
 //        requestBean.setEnvironmentMS("SAT");
@@ -107,8 +107,7 @@ public class TestExtractValidator {
         requestBean.setExternalCompanyID("1005307421-100"); // 01_Wayfair_US on SAT
         requestBean.setSoapUser("^CRETestTool");
         requestBean.setSoapPassword("password");
-        requestBean.setInvoiceTaxCode("OUTOFSTATEOPTION");
-        requestBean.setLineTaxCode("OUTOFSTATEOPTION");
+
         requestBean.setSoapUri("https://det-legacy-sat.onesourcetax.com/sabrix/services/taxcalculationservice/2011-09-01/taxcalculationservice");
 
 
