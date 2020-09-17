@@ -29,6 +29,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 /**
@@ -705,36 +706,36 @@ public final class TestRunnerService
 					/* Authority having No tax rule not coming in the line item, just appear in the message only.
 					   fetch authorty name and rule order from the message
 					 */
-					final Optional<MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
-							m -> m.getCODE().equals(RULE_NO_TAX)).findFirst();
-					for (final OutdataTaxType lineItem : taxTypeList)
+					List <MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
+							m -> m.getCODE().equals(RULE_NO_TAX)).collect(Collectors.toList());
+					for (MessageType msgType : ruleNoTaxMsgText)
 					{
-						BigDecimal ruleOrder = lineItem.getRULEORDER();
-						String authority = lineItem.getAUTHORITYNAME();
-
-						if (ruleNoTaxMsgText.isPresent())
-						{
-							final String msg = ruleNoTaxMsgText.get().getMESSAGETEXT();
-							ruleOrder = new BigDecimal(msg.substring(msg.lastIndexOf(":")+2));
-							authority = msg.substring(msg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, msg.lastIndexOf(TAX) + 3);
-						}
-						//If the rule order not exists in rule table, check admin authority rule
-						if (srcRuleQualifierDao.ruleOrderExistsInSrcRule(ruleOrder, authority) == 0)
-						{
-							// Get admin authority name from the response if any and use it to check rule qualifier
-							if (adminAuthMsgText.isPresent())
-							{
-								final String msg = adminAuthMsgText.get().getMESSAGETEXT();
-								authority = msg.substring(msg.lastIndexOf(ADMIN_AUTHORITY) + 10, msg.lastIndexOf(TAX) + 3);
-							}
-						}
-						if (srcRuleQualifierDao.ruleOrderExistsInRuleQualifier(ruleOrder,authority) > 0)
+						final String ruleNoTaxMsg = msgType.getMESSAGETEXT();
+						BigDecimal ruleOrder = new BigDecimal(ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(":")+2));
+						String authority = ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, ruleNoTaxMsg.lastIndexOf(TAX) + 3);
+						if (isRuleExistsInRuleQualiier(adminAuthMsgText, ruleOrder, authority))
 						{
 							ruleExistsInRuleQualiier = true;
 							break;
 						}
 
 					}
+
+					if (!ruleExistsInRuleQualiier)
+					{
+						for (final OutdataTaxType lineItem : taxTypeList)
+						{
+							BigDecimal ruleOrder = lineItem.getRULEORDER();
+							String authority = lineItem.getAUTHORITYNAME();
+							if (isRuleExistsInRuleQualiier(adminAuthMsgText, ruleOrder, authority))
+							{
+								ruleExistsInRuleQualiier = true;
+								break;
+							}
+						}
+					}
+
+
 					//If rule exists in rule qualifier, prefix key with "RULEQUALIFIER"
 					if (ruleExistsInRuleQualiier)
 					{
@@ -754,6 +755,37 @@ public final class TestRunnerService
 		//LOGGER.info(Logger.EVENT_UNSPECIFIED, "rule order :  "+productRuleOrder);
 		return productRateMap;
 	}
+
+
+	/**
+	 * Check whether the rule order exists in rule qualifier
+	 *
+	 * @param adminAuthMsgText
+	 * @param ruleOrder
+	 * @param authority
+	 *
+	 * @return
+	 */
+	private boolean isRuleExistsInRuleQualiier(final Optional<MessageType> adminAuthMsgText,
+											   final BigDecimal ruleOrder,
+											   String authority)
+	{
+		if (srcRuleQualifierDao.ruleOrderExistsInSrcRule(ruleOrder, authority) == 0)
+		{
+			// Get admin authority name from the response if any and use it to check rule qualifier
+			if (adminAuthMsgText.isPresent())
+			{
+				final String msg = adminAuthMsgText.get().getMESSAGETEXT();
+				authority = msg.substring(msg.lastIndexOf(ADMIN_AUTHORITY) + 10, msg.lastIndexOf(TAX) + 3);
+			}
+		}
+		if (srcRuleQualifierDao.ruleOrderExistsInRuleQualifier(ruleOrder,authority) > 0)
+		{
+			return true;
+		}
+		return false;
+	}
+
 
 	/**
 	 * Build the map of products and rates for those products in the extract.
