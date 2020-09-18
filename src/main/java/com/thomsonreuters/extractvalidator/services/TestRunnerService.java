@@ -26,7 +26,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -146,6 +148,7 @@ public final class TestRunnerService
 	 */
 	public RunResults generateRunResults(final TestRun testRunData)
 	{
+		final LocalDateTime startTime = LocalDateTime.now();
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Starting test run for company: " + testRunData.getTestCompanyName());
 		ContentExtract extract = null;
 		UiCompany testCompany = null;
@@ -209,12 +212,16 @@ public final class TestRunnerService
 
 				LOGGER.error(Logger.EVENT_FAILURE, "Something went wrong. Message: " + ex.getCause()+"\n"+ex.getStackTrace());
 			}
-			finally {
-//				cleanupOldModelScenario(testRunData);
-			}
 		}
 
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "All runs complete, returning test cases.");
+		final LocalDateTime endTime = LocalDateTime.now();
+		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Test cases complete at: " + endTime);
+		final Duration elapsedTime = Duration.between(startTime, endTime);
+		LOGGER.info(Logger.EVENT_UNSPECIFIED,
+				 String.format("Total time took test cases run was %s hours, %s minutes, %s seconds.",
+							   elapsedTime.toHours(), elapsedTime.toMinutes() - elapsedTime.toHours() * 60,
+							   elapsedTime.toMillis() / 1000 - elapsedTime.toMinutes() * 60));
 
 		return runResults;
 
@@ -698,11 +705,8 @@ public final class TestRunnerService
 //						accumulatedTaxAmount = accumulatedTaxAmount.add(BigDecimal.valueOf(Double.parseDouble(authorityTaxDetail.getTaxAmount())));
 //						//productRuleOrders= productRuleOrders+ authorityTaxDetail.getRuleOrder();
 //					}
-
 					boolean ruleExistsInRuleQualiier = false;
-					//Cascading rule used for admin authority, get authority name from the message
-					final Optional<MessageType> adminAuthMsgText = lineTaxDetail.getMESSAGE().stream().filter(
-							m -> m.getMESSAGETEXT().contains(CASCADING_RULE_WAS_FOUND)).findFirst();
+
 					/* Authority having No tax rule not coming in the line item, just appear in the message only.
 					   fetch authorty name and rule order from the message
 					 */
@@ -713,7 +717,7 @@ public final class TestRunnerService
 						final String ruleNoTaxMsg = msgType.getMESSAGETEXT();
 						BigDecimal ruleOrder = new BigDecimal(ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(":")+2));
 						String authority = ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, ruleNoTaxMsg.lastIndexOf(TAX) + 3);
-						if (isRuleExistsInRuleQualiier(adminAuthMsgText, ruleOrder, authority))
+						if (isRuleExistsInRuleQualiier(lineTaxDetail, ruleOrder, authority))
 						{
 							ruleExistsInRuleQualiier = true;
 							break;
@@ -727,7 +731,7 @@ public final class TestRunnerService
 						{
 							BigDecimal ruleOrder = lineItem.getRULEORDER();
 							String authority = lineItem.getAUTHORITYNAME();
-							if (isRuleExistsInRuleQualiier(adminAuthMsgText, ruleOrder, authority))
+							if (isRuleExistsInRuleQualiier(lineTaxDetail, ruleOrder, authority))
 							{
 								ruleExistsInRuleQualiier = true;
 								break;
@@ -760,19 +764,22 @@ public final class TestRunnerService
 	/**
 	 * Check whether the rule order exists in rule qualifier
 	 *
-	 * @param adminAuthMsgText
+	 * @param lineTaxDetail
 	 * @param ruleOrder
 	 * @param authority
 	 *
 	 * @return
 	 */
-	private boolean isRuleExistsInRuleQualiier(final Optional<MessageType> adminAuthMsgText,
+	private boolean isRuleExistsInRuleQualiier(final OutdataLineType lineTaxDetail,
 											   final BigDecimal ruleOrder,
 											   String authority)
 	{
 		if (srcRuleQualifierDao.ruleOrderExistsInSrcRule(ruleOrder, authority) == 0)
 		{
 			// Get admin authority name from the response if any and use it to check rule qualifier
+			// Cascading rule used for admin authority, get authority name from the message
+			final Optional<MessageType> adminAuthMsgText = lineTaxDetail.getMESSAGE().stream().filter(
+					m -> m.getMESSAGETEXT().contains(CASCADING_RULE_WAS_FOUND)).findFirst();
 			if (adminAuthMsgText.isPresent())
 			{
 				final String msg = adminAuthMsgText.get().getMESSAGETEXT();
