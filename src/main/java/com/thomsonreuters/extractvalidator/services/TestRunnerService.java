@@ -625,12 +625,15 @@ public final class TestRunnerService
 		{
 			for (final Map.Entry<String, BigDecimal> extractEntry : extractProductRateMap.entrySet())
 			{
-				String scenarioKey = scenarioEntry.getKey().startsWith(RULEQUALIFIER) ? scenarioEntry.getKey().substring(RULEQUALIFIER.length()) : scenarioEntry.getKey();
-				if (extractEntry.getKey().equals(scenarioKey))
+				if (extractEntry.getKey().equals(scenarioEntry.getKey()))
 				{
 					final TestCase testCase = new TestCase();
 
 					buildTestCase(extractEntry, testCase, scenarioEntry, effectiveDate, locationTreatmentData,scenarioCounter);
+					if (testCase.getTestResult().equals(FAILED))
+					{
+						isFailedForRuleQualiier(taxCalculationResponse, modelScenarioDetail.getScenarioLines(), scenarioEntry, testCase);
+					}
 					testCases.add(testCase);
 
 					break;
@@ -638,6 +641,72 @@ public final class TestRunnerService
 			}
 		}
 		return testCases;
+	}
+
+
+	/**
+	 * @param taxCalculationResponse
+	 * @param lines
+	 * @param scenarioEntry
+	 * @param testCase
+	 */
+	public void isFailedForRuleQualiier(final TaxCalculationResponse taxCalculationResponse, final List<UiModelScenarioLine> lines, final Map.Entry<String, BigDecimal> scenarioEntry, TestCase testCase)
+	{
+		final int splitIndex = scenarioEntry.getKey().indexOf(':');
+		final String productCode = scenarioEntry.getKey().substring(0, splitIndex);
+		final String grossAmount = scenarioEntry.getKey().substring(splitIndex + 1);
+		boolean ruleExistsInRuleQualiier = false;
+		for (final UiModelScenarioLine scenarioLine : lines)
+		{
+			if (!scenarioLine.getProductCode().equals(productCode))
+			{
+				continue;
+			}
+			for (final OutdataLineType lineTaxDetail : taxCalculationResponse.getOUTDATA().getINVOICE().get(0).getLINE())
+			{
+				if (lineTaxDetail.getLINENUMBER().compareTo(BigDecimal.valueOf(scenarioLine.getLineNumber())) == 0
+						&& lineTaxDetail.getGROSSAMOUNT().equals(grossAmount))
+				{
+					List<OutdataTaxType> taxTypeList = lineTaxDetail.getTAX();
+					/* Authority having No tax rule not coming in the line item, just appear in the message only.
+					   fetch authorty name and rule order from the message
+					 */
+					List <MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
+							m -> m.getCODE().equals(RULE_NO_TAX)).collect(Collectors.toList());
+					for (MessageType msgType : ruleNoTaxMsgText)
+					{
+						final String ruleNoTaxMsg = msgType.getMESSAGETEXT();
+						BigDecimal ruleOrder = new BigDecimal(ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(":")+2));
+						String authority = ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, ruleNoTaxMsg.lastIndexOf(TAX) + 3);
+						if (isRuleExistsInRuleQualiier(lineTaxDetail, ruleOrder, authority))
+						{
+							ruleExistsInRuleQualiier = true;
+							break;
+						}
+
+					}
+
+					if (!ruleExistsInRuleQualiier)
+					{
+						for (final OutdataTaxType lineItem : taxTypeList)
+						{
+							BigDecimal ruleOrder = lineItem.getRULEORDER();
+							String authority = lineItem.getAUTHORITYNAME();
+							if (isRuleExistsInRuleQualiier(lineTaxDetail, ruleOrder, authority))
+							{
+								ruleExistsInRuleQualiier = true;
+								break;
+							}
+						}
+					}
+
+				}
+			}
+		}
+		if (ruleExistsInRuleQualiier)
+		{
+			testCase.setTestResult(RULEQUALIFIER);
+		}
 	}
 
 
@@ -693,8 +762,6 @@ public final class TestRunnerService
 			{
 				if (lineTaxDetail.getLINENUMBER().compareTo(BigDecimal.valueOf(scenarioLine.getLineNumber())) == 0)
 				{
-					List<OutdataTaxType> taxTypeList = lineTaxDetail.getTAX();
-
 					BigDecimal accumulatedTaxAmount = new BigDecimal(lineTaxDetail.getTOTALTAXAMOUNT());
 					String productRuleOrders="";
 
@@ -705,52 +772,9 @@ public final class TestRunnerService
 //						accumulatedTaxAmount = accumulatedTaxAmount.add(BigDecimal.valueOf(Double.parseDouble(authorityTaxDetail.getTaxAmount())));
 //						//productRuleOrders= productRuleOrders+ authorityTaxDetail.getRuleOrder();
 //					}
-					boolean ruleExistsInRuleQualiier = false;
 
-					/* Authority having No tax rule not coming in the line item, just appear in the message only.
-					   fetch authorty name and rule order from the message
-					 */
-					List <MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
-							m -> m.getCODE().equals(RULE_NO_TAX)).collect(Collectors.toList());
-					for (MessageType msgType : ruleNoTaxMsgText)
-					{
-						final String ruleNoTaxMsg = msgType.getMESSAGETEXT();
-						BigDecimal ruleOrder = new BigDecimal(ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(":")+2));
-						String authority = ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, ruleNoTaxMsg.lastIndexOf(TAX) + 3);
-						if (isRuleExistsInRuleQualiier(lineTaxDetail, ruleOrder, authority))
-						{
-							ruleExistsInRuleQualiier = true;
-							break;
-						}
-
-					}
-
-					if (!ruleExistsInRuleQualiier)
-					{
-						for (final OutdataTaxType lineItem : taxTypeList)
-						{
-							BigDecimal ruleOrder = lineItem.getRULEORDER();
-							String authority = lineItem.getAUTHORITYNAME();
-							if (isRuleExistsInRuleQualiier(lineTaxDetail, ruleOrder, authority))
-							{
-								ruleExistsInRuleQualiier = true;
-								break;
-							}
-						}
-					}
-
-
-					//If rule exists in rule qualifier, prefix key with "RULEQUALIFIER"
-					if (ruleExistsInRuleQualiier)
-					{
-						productRateMap.put(RULEQUALIFIER+scenarioLine.getProductCode() + ":" + lineTaxDetail.getGROSSAMOUNT(), accumulatedTaxAmount);
-
-					} else
-					{
-						productRateMap.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGROSSAMOUNT(), accumulatedTaxAmount);
-						//productRuleOrder.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGrossAmount(),productRuleOrders);
-					}
-
+					productRateMap.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGROSSAMOUNT(), accumulatedTaxAmount);
+					//productRuleOrder.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGrossAmount(),productRuleOrders);
 
 					break;
 				}
@@ -1017,7 +1041,6 @@ public final class TestRunnerService
 		testAddress.setState(locationTreatmentData.getAddress().getState());
 
 		testCase.setAddress(testAddress);
-
 		if (null == accumulatedTaxAmount)
 		{
 			testCase.setTestResult(FAILED);
@@ -1033,10 +1056,6 @@ public final class TestRunnerService
 			if (difference <= 0.01 && difference >= -0.01) {
 				testCase.setTestResult(PASSED);
 				testCase.setMessage("Tax amount is: " + modelScenarioTaxAmount + " for Gross Amount: " + grossAmount);
-			} else if (scenarioEntry.getKey().startsWith(RULEQUALIFIER))
-			{
-				testCase.setTestResult(RULEQUALIFIER);
-				testCase.setMessage("The tax amouunt do not match Scenario tax amount due to rule qualifier");
 			} else {
 				testCase.setTestResult(FAILED);
 				testCase.setMessage("The tax amouunt do not match Scenario tax amount: " + modelScenarioTaxAmount + " Accumulated Tax amount: " + accumulatedTaxAmount);
