@@ -15,6 +15,8 @@ import com.thomsonreuters.extractvalidator.util.LocationTreatmentBuilder;
 import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
 import com.thomsonreuters.extractvalidator.util.SoapClient;
 import com.thomsonreuters.extractvalidator.wsdl.*;
+
+import org.apache.xpath.operations.Bool;
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +28,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -106,6 +110,8 @@ public final class TestRunnerService
 	 */
 	private  static final String ADMIN_AUTHORITY = "authority";
 
+	private static final Map<String,Boolean> RQ_AUTH_MAP = new HashMap<>();
+
 
 	/**
 	 * The rest client to use when making REST calls to Content Extract endpoints or Determination Endpoints.
@@ -146,6 +152,7 @@ public final class TestRunnerService
 	 */
 	public RunResults generateRunResults(final TestRun testRunData)
 	{
+		final LocalDateTime startTime = LocalDateTime.now();
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Starting test run for company: " + testRunData.getTestCompanyName());
 		ContentExtract extract = null;
 		UiCompany testCompany = null;
@@ -209,12 +216,16 @@ public final class TestRunnerService
 
 				LOGGER.error(Logger.EVENT_FAILURE, "Something went wrong. Message: " + ex.getCause()+"\n"+ex.getStackTrace());
 			}
-			finally {
-//				cleanupOldModelScenario(testRunData);
-			}
 		}
 
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "All runs complete, returning test cases.");
+		final LocalDateTime endTime = LocalDateTime.now();
+		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Test cases complete at: " + endTime);
+		final Duration elapsedTime = Duration.between(startTime, endTime);
+		LOGGER.info(Logger.EVENT_UNSPECIFIED,
+				 String.format("Total time took test cases run was %s hours, %s minutes, %s seconds.",
+							   elapsedTime.toHours(), elapsedTime.toMinutes() - elapsedTime.toHours() * 60,
+							   elapsedTime.toMillis() / 1000 - elapsedTime.toMinutes() * 60));
 
 		return runResults;
 
@@ -425,6 +436,7 @@ public final class TestRunnerService
 		setTaxType(indata,taxType);
 
 		getIndataInvoice(indata).setTAXCODE(invoiceTaxCode);
+		RQ_AUTH_MAP.clear();
 
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Total address number: "+addresses.size());
 		for (final Address address : addresses)
@@ -618,12 +630,15 @@ public final class TestRunnerService
 		{
 			for (final Map.Entry<String, BigDecimal> extractEntry : extractProductRateMap.entrySet())
 			{
-				String scenarioKey = scenarioEntry.getKey().startsWith(RULEQUALIFIER) ? scenarioEntry.getKey().substring(RULEQUALIFIER.length()) : scenarioEntry.getKey();
-				if (extractEntry.getKey().equals(scenarioKey))
+				if (extractEntry.getKey().equals(scenarioEntry.getKey()))
 				{
 					final TestCase testCase = new TestCase();
 
 					buildTestCase(extractEntry, testCase, scenarioEntry, effectiveDate, locationTreatmentData,scenarioCounter);
+					if (testCase.getTestResult().equals(FAILED))
+					{
+						isFailedForRuleQualiier(taxCalculationResponse, modelScenarioDetail.getScenarioLines(), scenarioEntry, testCase);
+					}
 					testCases.add(testCase);
 
 					break;
@@ -631,6 +646,74 @@ public final class TestRunnerService
 			}
 		}
 		return testCases;
+	}
+
+
+	/**
+	 * @param taxCalculationResponse
+	 * @param lines
+	 * @param scenarioEntry
+	 * @param testCase
+	 */
+	public void isFailedForRuleQualiier(final TaxCalculationResponse taxCalculationResponse, final List<UiModelScenarioLine> lines, final Map.Entry<String, BigDecimal> scenarioEntry, TestCase testCase)
+	{
+		final int splitIndex = scenarioEntry.getKey().indexOf(':');
+		final String productCode = scenarioEntry.getKey().substring(0, splitIndex);
+		final String grossAmount = scenarioEntry.getKey().substring(splitIndex + 1);
+		boolean ruleExistsInRuleQualifier = false;
+		for (final UiModelScenarioLine scenarioLine : lines)
+		{
+			if (!scenarioLine.getProductCode().equals(productCode))
+			{
+				continue;
+			}
+			for (final OutdataLineType lineTaxDetail : taxCalculationResponse.getOUTDATA().getINVOICE().get(0).getLINE())
+			{
+				if (lineTaxDetail.getLINENUMBER().compareTo(BigDecimal.valueOf(scenarioLine.getLineNumber())) == 0
+						&& lineTaxDetail.getGROSSAMOUNT().equals(grossAmount))
+				{
+					List<OutdataTaxType> taxTypeList = lineTaxDetail.getTAX();
+
+
+					for (final OutdataTaxType lineItem : taxTypeList)
+					{
+						BigDecimal ruleOrder = lineItem.getRULEORDER();
+						String authority = lineItem.getAUTHORITYNAME();
+						if (isRuleExistsInRuleQualifier(lineTaxDetail, ruleOrder, authority))
+						{
+							ruleExistsInRuleQualifier = true;
+							break;
+						}
+					}
+					/* Authority having No tax rule not coming in the line item, just appear in the message only.
+					   fetch authorty name and rule order from the message
+					 */
+					if (!ruleExistsInRuleQualifier)
+					{
+						List <MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
+								m -> m.getCODE().equals(RULE_NO_TAX)).collect(Collectors.toList());
+						for (MessageType msgType : ruleNoTaxMsgText)
+						{
+							final String ruleNoTaxMsg = msgType.getMESSAGETEXT();
+							BigDecimal ruleOrder = new BigDecimal(ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(":")+2));
+							String authority = ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, ruleNoTaxMsg.lastIndexOf(TAX) + 3);
+							if (isRuleExistsInRuleQualifier(lineTaxDetail, ruleOrder, authority))
+							{
+								ruleExistsInRuleQualifier = true;
+								break;
+							}
+
+						}
+
+					}
+
+				}
+			}
+		}
+		if (ruleExistsInRuleQualifier)
+		{
+			testCase.setTestResult(RULEQUALIFIER);
+		}
 	}
 
 
@@ -686,8 +769,6 @@ public final class TestRunnerService
 			{
 				if (lineTaxDetail.getLINENUMBER().compareTo(BigDecimal.valueOf(scenarioLine.getLineNumber())) == 0)
 				{
-					List<OutdataTaxType> taxTypeList = lineTaxDetail.getTAX();
-
 					BigDecimal accumulatedTaxAmount = new BigDecimal(lineTaxDetail.getTOTALTAXAMOUNT());
 					String productRuleOrders="";
 
@@ -699,54 +780,8 @@ public final class TestRunnerService
 //						//productRuleOrders= productRuleOrders+ authorityTaxDetail.getRuleOrder();
 //					}
 
-					boolean ruleExistsInRuleQualiier = false;
-					//Cascading rule used for admin authority, get authority name from the message
-					final Optional<MessageType> adminAuthMsgText = lineTaxDetail.getMESSAGE().stream().filter(
-							m -> m.getMESSAGETEXT().contains(CASCADING_RULE_WAS_FOUND)).findFirst();
-					/* Authority having No tax rule not coming in the line item, just appear in the message only.
-					   fetch authorty name and rule order from the message
-					 */
-					List <MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
-							m -> m.getCODE().equals(RULE_NO_TAX)).collect(Collectors.toList());
-					for (MessageType msgType : ruleNoTaxMsgText)
-					{
-						final String ruleNoTaxMsg = msgType.getMESSAGETEXT();
-						BigDecimal ruleOrder = new BigDecimal(ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(":")+2));
-						String authority = ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, ruleNoTaxMsg.lastIndexOf(TAX) + 3);
-						if (isRuleExistsInRuleQualiier(adminAuthMsgText, ruleOrder, authority))
-						{
-							ruleExistsInRuleQualiier = true;
-							break;
-						}
-
-					}
-
-					if (!ruleExistsInRuleQualiier)
-					{
-						for (final OutdataTaxType lineItem : taxTypeList)
-						{
-							BigDecimal ruleOrder = lineItem.getRULEORDER();
-							String authority = lineItem.getAUTHORITYNAME();
-							if (isRuleExistsInRuleQualiier(adminAuthMsgText, ruleOrder, authority))
-							{
-								ruleExistsInRuleQualiier = true;
-								break;
-							}
-						}
-					}
-
-
-					//If rule exists in rule qualifier, prefix key with "RULEQUALIFIER"
-					if (ruleExistsInRuleQualiier)
-					{
-						productRateMap.put(RULEQUALIFIER+scenarioLine.getProductCode() + ":" + lineTaxDetail.getGROSSAMOUNT(), accumulatedTaxAmount);
-
-					} else
-					{
-						productRateMap.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGROSSAMOUNT(), accumulatedTaxAmount);
-						//productRuleOrder.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGrossAmount(),productRuleOrders);
-					}
-
+					productRateMap.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGROSSAMOUNT(), accumulatedTaxAmount);
+					//productRuleOrder.put(scenarioLine.getProductCode() + ":" + lineTaxDetail.getGrossAmount(),productRuleOrders);
 
 					break;
 				}
@@ -760,19 +795,25 @@ public final class TestRunnerService
 	/**
 	 * Check whether the rule order exists in rule qualifier
 	 *
-	 * @param adminAuthMsgText
+	 * @param lineTaxDetail
 	 * @param ruleOrder
 	 * @param authority
 	 *
 	 * @return
 	 */
-	private boolean isRuleExistsInRuleQualiier(final Optional<MessageType> adminAuthMsgText,
+	private boolean isRuleExistsInRuleQualifier(final OutdataLineType lineTaxDetail,
 											   final BigDecimal ruleOrder,
 											   String authority)
 	{
+		if (RQ_AUTH_MAP.containsKey(authority+ruleOrder)) {
+			return Boolean.TRUE.equals(RQ_AUTH_MAP.get(authority+ruleOrder));
+		}
 		if (srcRuleQualifierDao.ruleOrderExistsInSrcRule(ruleOrder, authority) == 0)
 		{
 			// Get admin authority name from the response if any and use it to check rule qualifier
+			// Cascading rule used for admin authority, get authority name from the message
+			final Optional<MessageType> adminAuthMsgText = lineTaxDetail.getMESSAGE().stream().filter(
+					m -> m.getMESSAGETEXT().contains(CASCADING_RULE_WAS_FOUND)).findFirst();
 			if (adminAuthMsgText.isPresent())
 			{
 				final String msg = adminAuthMsgText.get().getMESSAGETEXT();
@@ -781,9 +822,12 @@ public final class TestRunnerService
 		}
 		if (srcRuleQualifierDao.ruleOrderExistsInRuleQualifier(ruleOrder,authority) > 0)
 		{
-			return true;
+			RQ_AUTH_MAP.put(authority+ruleOrder,Boolean.TRUE);
+		} else
+		{
+			RQ_AUTH_MAP.put(authority+ruleOrder,Boolean.FALSE);
 		}
-		return false;
+		return Boolean.TRUE.equals(RQ_AUTH_MAP.get(authority+ruleOrder));
 	}
 
 
@@ -1010,7 +1054,6 @@ public final class TestRunnerService
 		testAddress.setState(locationTreatmentData.getAddress().getState());
 
 		testCase.setAddress(testAddress);
-
 		if (null == accumulatedTaxAmount)
 		{
 			testCase.setTestResult(FAILED);
@@ -1026,10 +1069,6 @@ public final class TestRunnerService
 			if (difference <= 0.01 && difference >= -0.01) {
 				testCase.setTestResult(PASSED);
 				testCase.setMessage("Tax amount is: " + modelScenarioTaxAmount + " for Gross Amount: " + grossAmount);
-			} else if (scenarioEntry.getKey().startsWith(RULEQUALIFIER))
-			{
-				testCase.setTestResult(RULEQUALIFIER);
-				testCase.setMessage("The tax amouunt do not match Scenario tax amount due to rule qualifier");
 			} else {
 				testCase.setTestResult(FAILED);
 				testCase.setMessage("The tax amouunt do not match Scenario tax amount: " + modelScenarioTaxAmount + " Accumulated Tax amount: " + accumulatedTaxAmount);
