@@ -15,8 +15,6 @@ import com.thomsonreuters.extractvalidator.util.LocationTreatmentBuilder;
 import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
 import com.thomsonreuters.extractvalidator.util.SoapClient;
 import com.thomsonreuters.extractvalidator.wsdl.*;
-
-import org.apache.xpath.operations.Bool;
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
