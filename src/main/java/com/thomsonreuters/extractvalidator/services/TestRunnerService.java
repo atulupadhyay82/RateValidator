@@ -15,8 +15,6 @@ import com.thomsonreuters.extractvalidator.util.LocationTreatmentBuilder;
 import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
 import com.thomsonreuters.extractvalidator.util.SoapClient;
 import com.thomsonreuters.extractvalidator.wsdl.*;
-
-import org.apache.xpath.operations.Bool;
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -660,7 +658,11 @@ public final class TestRunnerService
 		final int splitIndex = scenarioEntry.getKey().indexOf(':');
 		final String productCode = scenarioEntry.getKey().substring(0, splitIndex);
 		final String grossAmount = scenarioEntry.getKey().substring(splitIndex + 1);
+<<<<<<< HEAD
 		boolean ruleExistsInRuleQualifier = false;
+=======
+		boolean ruleExistsInRuleQualiier = false;
+>>>>>>> d34d6fb... CE-863 changed code to check rule qualifier only when there is mismatch
 		for (final UiModelScenarioLine scenarioLine : lines)
 		{
 			if (!scenarioLine.getProductCode().equals(productCode))
@@ -673,6 +675,7 @@ public final class TestRunnerService
 						&& lineTaxDetail.getGROSSAMOUNT().equals(grossAmount))
 				{
 					List<OutdataTaxType> taxTypeList = lineTaxDetail.getTAX();
+<<<<<<< HEAD
 
 
 					for (final OutdataTaxType lineItem : taxTypeList)
@@ -705,12 +708,48 @@ public final class TestRunnerService
 
 						}
 
+=======
+					/* Authority having No tax rule not coming in the line item, just appear in the message only.
+					   fetch authorty name and rule order from the message
+					 */
+					List <MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
+							m -> m.getCODE().equals(RULE_NO_TAX)).collect(Collectors.toList());
+					for (MessageType msgType : ruleNoTaxMsgText)
+					{
+						final String ruleNoTaxMsg = msgType.getMESSAGETEXT();
+						BigDecimal ruleOrder = new BigDecimal(ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(":")+2));
+						String authority = ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, ruleNoTaxMsg.lastIndexOf(TAX) + 3);
+						if (isRuleExistsInRuleQualiier(lineTaxDetail, ruleOrder, authority))
+						{
+							ruleExistsInRuleQualiier = true;
+							break;
+						}
+
+					}
+
+					if (!ruleExistsInRuleQualiier)
+					{
+						for (final OutdataTaxType lineItem : taxTypeList)
+						{
+							BigDecimal ruleOrder = lineItem.getRULEORDER();
+							String authority = lineItem.getAUTHORITYNAME();
+							if (isRuleExistsInRuleQualiier(lineTaxDetail, ruleOrder, authority))
+							{
+								ruleExistsInRuleQualiier = true;
+								break;
+							}
+						}
+>>>>>>> d34d6fb... CE-863 changed code to check rule qualifier only when there is mismatch
 					}
 
 				}
 			}
 		}
+<<<<<<< HEAD
 		if (ruleExistsInRuleQualifier)
+=======
+		if (ruleExistsInRuleQualiier)
+>>>>>>> d34d6fb... CE-863 changed code to check rule qualifier only when there is mismatch
 		{
 			testCase.setTestResult(RULEQUALIFIER);
 		}
@@ -829,7 +868,6 @@ public final class TestRunnerService
 		}
 		return Boolean.TRUE.equals(RQ_AUTH_MAP.get(authority+ruleOrder));
 	}
-
 
 	/**
 	 * Build the map of products and rates for those products in the extract.
