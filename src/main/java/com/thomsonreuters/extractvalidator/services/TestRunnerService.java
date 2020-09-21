@@ -15,6 +15,8 @@ import com.thomsonreuters.extractvalidator.util.LocationTreatmentBuilder;
 import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
 import com.thomsonreuters.extractvalidator.util.SoapClient;
 import com.thomsonreuters.extractvalidator.wsdl.*;
+
+import org.apache.xpath.operations.Bool;
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -107,6 +109,8 @@ public final class TestRunnerService
 	 *
 	 */
 	private  static final String ADMIN_AUTHORITY = "authority";
+
+	private static final Map<String,Boolean> RQ_AUTH_MAP = new HashMap<>();
 
 
 	/**
@@ -432,6 +436,7 @@ public final class TestRunnerService
 		setTaxType(indata,taxType);
 
 		getIndataInvoice(indata).setTAXCODE(invoiceTaxCode);
+		RQ_AUTH_MAP.clear();
 
 		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Total address number: "+addresses.size());
 		for (final Address address : addresses)
@@ -655,7 +660,7 @@ public final class TestRunnerService
 		final int splitIndex = scenarioEntry.getKey().indexOf(':');
 		final String productCode = scenarioEntry.getKey().substring(0, splitIndex);
 		final String grossAmount = scenarioEntry.getKey().substring(splitIndex + 1);
-		boolean ruleExistsInRuleQualiier = false;
+		boolean ruleExistsInRuleQualifier = false;
 		for (final UiModelScenarioLine scenarioLine : lines)
 		{
 			if (!scenarioLine.getProductCode().equals(productCode))
@@ -668,42 +673,44 @@ public final class TestRunnerService
 						&& lineTaxDetail.getGROSSAMOUNT().equals(grossAmount))
 				{
 					List<OutdataTaxType> taxTypeList = lineTaxDetail.getTAX();
+
+
+					for (final OutdataTaxType lineItem : taxTypeList)
+					{
+						BigDecimal ruleOrder = lineItem.getRULEORDER();
+						String authority = lineItem.getAUTHORITYNAME();
+						if (isRuleExistsInRuleQualifier(lineTaxDetail, ruleOrder, authority))
+						{
+							ruleExistsInRuleQualifier = true;
+							break;
+						}
+					}
 					/* Authority having No tax rule not coming in the line item, just appear in the message only.
 					   fetch authorty name and rule order from the message
 					 */
-					List <MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
-							m -> m.getCODE().equals(RULE_NO_TAX)).collect(Collectors.toList());
-					for (MessageType msgType : ruleNoTaxMsgText)
+					if (!ruleExistsInRuleQualifier)
 					{
-						final String ruleNoTaxMsg = msgType.getMESSAGETEXT();
-						BigDecimal ruleOrder = new BigDecimal(ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(":")+2));
-						String authority = ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, ruleNoTaxMsg.lastIndexOf(TAX) + 3);
-						if (isRuleExistsInRuleQualiier(lineTaxDetail, ruleOrder, authority))
+						List <MessageType> ruleNoTaxMsgText = lineTaxDetail.getMESSAGE().stream().filter(
+								m -> m.getCODE().equals(RULE_NO_TAX)).collect(Collectors.toList());
+						for (MessageType msgType : ruleNoTaxMsgText)
 						{
-							ruleExistsInRuleQualiier = true;
-							break;
-						}
-
-					}
-
-					if (!ruleExistsInRuleQualiier)
-					{
-						for (final OutdataTaxType lineItem : taxTypeList)
-						{
-							BigDecimal ruleOrder = lineItem.getRULEORDER();
-							String authority = lineItem.getAUTHORITYNAME();
-							if (isRuleExistsInRuleQualiier(lineTaxDetail, ruleOrder, authority))
+							final String ruleNoTaxMsg = msgType.getMESSAGETEXT();
+							BigDecimal ruleOrder = new BigDecimal(ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(":")+2));
+							String authority = ruleNoTaxMsg.substring(ruleNoTaxMsg.lastIndexOf(RULE_NO_TAX_AUTHORITY) + 11, ruleNoTaxMsg.lastIndexOf(TAX) + 3);
+							if (isRuleExistsInRuleQualifier(lineTaxDetail, ruleOrder, authority))
 							{
-								ruleExistsInRuleQualiier = true;
+								ruleExistsInRuleQualifier = true;
 								break;
 							}
+
 						}
+
 					}
 
 				}
 			}
 		}
-		if (ruleExistsInRuleQualiier)
+		if (ruleExistsInRuleQualifier)
 		{
 			testCase.setTestResult(RULEQUALIFIER);
 		}
@@ -794,10 +801,13 @@ public final class TestRunnerService
 	 *
 	 * @return
 	 */
-	private boolean isRuleExistsInRuleQualiier(final OutdataLineType lineTaxDetail,
+	private boolean isRuleExistsInRuleQualifier(final OutdataLineType lineTaxDetail,
 											   final BigDecimal ruleOrder,
 											   String authority)
 	{
+		if (RQ_AUTH_MAP.containsKey(authority+ruleOrder)) {
+			return Boolean.TRUE.equals(RQ_AUTH_MAP.get(authority+ruleOrder));
+		}
 		if (srcRuleQualifierDao.ruleOrderExistsInSrcRule(ruleOrder, authority) == 0)
 		{
 			// Get admin authority name from the response if any and use it to check rule qualifier
@@ -812,9 +822,12 @@ public final class TestRunnerService
 		}
 		if (srcRuleQualifierDao.ruleOrderExistsInRuleQualifier(ruleOrder,authority) > 0)
 		{
-			return true;
+			RQ_AUTH_MAP.put(authority+ruleOrder,Boolean.TRUE);
+		} else
+		{
+			RQ_AUTH_MAP.put(authority+ruleOrder,Boolean.FALSE);
 		}
-		return false;
+		return Boolean.TRUE.equals(RQ_AUTH_MAP.get(authority+ruleOrder));
 	}
 
 
