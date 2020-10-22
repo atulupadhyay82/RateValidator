@@ -43,7 +43,7 @@ public final class ModelScenarioUtil
 															  final String companyUUID,
 															  final String productCategoryName,
 															  final ContentExtract contentExtract,
-															  final List<String> lineGrossAmounts,
+															  final String lineGrossAmount,
 															  final String modelScenarioName,
 															  final String taxType)
 	{
@@ -106,7 +106,7 @@ public final class ModelScenarioUtil
 		uiModelScenarioDetail.setOperatingLicenses(operatingLicenses);
 		uiModelScenarioDetail.setQualifiers(new LinkedList<>());
 
-		uiModelScenarioDetail.setScenarioLines(buildScenarioLinesByProduct(contentExtract, productCategoryName,lineGrossAmounts));
+		uiModelScenarioDetail.setScenarioLines(buildScenarioLinesByProduct(contentExtract, productCategoryName,lineGrossAmount));
 
 		return uiModelScenarioDetail;
 	}
@@ -187,13 +187,13 @@ public final class ModelScenarioUtil
 	 *
 	 * @return The list of lines to use in the model scenario.
 	 */
-	private static List<UiModelScenarioLine> buildScenarioLinesByProduct(final ContentExtract contentExtract, final String productCategoryName, final List<String> lineGrossAmounts)
+	private static List<UiModelScenarioLine> buildScenarioLinesByProduct(final ContentExtract contentExtract, final String productCategoryName, final String stringGrossAmount)
 	{
 		final List<UiModelScenarioLine> scenarioLines = new LinkedList<>();
 		final List<BigDecimal> grossAmounts = new LinkedList<>();
 
 		// Pull the gross amounts from the list and create big decimals out of the strings.
-		for (final String stringGrossAmount : lineGrossAmounts)
+//		for (final String stringGrossAmount : lineGrossAmounts)
 		{
 			final BigDecimal doubleValue = BigDecimal.valueOf(Double.parseDouble(stringGrossAmount));
 			grossAmounts.add(doubleValue);
@@ -208,7 +208,7 @@ public final class ModelScenarioUtil
 
 		if(null != contentExtract.getProducts()) {
 
-			for (final BigDecimal lineGrossAmount : grossAmounts) {
+//			for (final BigDecimal lineGrossAmount : grossAmounts) {
 				for (final Product product : contentExtract.getProducts()) {
 					if(productCategoryName!=null && !product.getProductCategory().contains(productCategoryName)){
 						continue;
@@ -216,7 +216,7 @@ public final class ModelScenarioUtil
 						final UiModelScenarioLine line = new UiModelScenarioLine();
 
 						line.setDelete(false);
-						line.setGrossAmount(lineGrossAmount);
+						line.setGrossAmount(grossAmounts.get(0));
 						line.setLineNumber(lineNumberCounter++);
 						line.setQuantity(new BigDecimal(1));
 						line.setProductCode(product.getName());
@@ -238,7 +238,7 @@ public final class ModelScenarioUtil
 						scenarioLines.add(line);
 
 				}
-			}
+//			}
 		}
 		return scenarioLines;
 	}

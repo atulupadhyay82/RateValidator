@@ -402,123 +402,139 @@ public final class TestRunnerService
 													    final List<TestCase> testCases) throws Exception
 	{
 		final List<String> lineGrossAmounts = null == testRunData.getLineGrossAmounts() ? new LinkedList<>() : testRunData.getLineGrossAmounts();
-		final String companyID= testRunData.getTestCompanyID();
-		final String taxType=testRunData.getTaxType();
-		final UiModelScenarioDetail uiModelScenarioDetail = ModelScenarioUtil.buildNewModelScenario(testRunData.getTestCompanyName(),
-																									testRunData.getTestCompanyUUID(),
-																									testRunData.getProductCategoryName(),
-																									contentExtract,
-																									lineGrossAmounts,
-																									testRunData.getModelScenarioName(),
-																									taxType);
-		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Invoice line number: "+uiModelScenarioDetail.getScenarioLines().size());
-		final IndataType indata = buildIndata(testRunData.getExternalCompanyID());
+		final String companyID = testRunData.getTestCompanyID();
+		final String taxType = testRunData.getTaxType();
+		String filePath = System.getProperty("user.dir") + System.getProperty("file.separator") + testRunData.getTestExtractConfigName() + "_Result_" + System.currentTimeMillis() + ".json";
 
-		final String invoiceTaxCode=testRunData.getInvoiceTaxCode();
-		final String lineTaxCode=testRunData.getLineTaxCode();
-
-		int scenarioCounter = 1;
-		List<String> jurisdictionList =testRunData.getJurisdictionKeys();
-		List<String> postalcodeList=testRunData.getPostalCodeList();
-		String jurisdictionKey;
-		HashMap<String, String> jurisdictionMap =new HashMap<>();
-		Set<LocalDate> effectiveDates;
-		String filePath= System.getProperty("user.dir")+System.getProperty("file.separator")+testRunData.getTestExtractConfigName()+"_Result_"+System.currentTimeMillis()+".json";
-
-		File outputFile= new File(filePath);
-		LOGGER.info(Logger.EVENT_UNSPECIFIED,"file created at "+filePath);
-		List<Address> addresses= contentExtract.getAddresses();
-
-		Collections.sort(addresses);
-		LOGGER.info(Logger.EVENT_UNSPECIFIED,"Skipped list : "+jurisdictionList);
-		setTaxType(indata,taxType);
-
-		getIndataInvoice(indata).setTAXCODE(invoiceTaxCode);
-		RQ_AUTH_MAP.clear();
-
-		LOGGER.info(Logger.EVENT_UNSPECIFIED, "Total address number: "+addresses.size());
-		for (final Address address : addresses)
+		File outputFile = new File(filePath);
+		LOGGER.info(Logger.EVENT_UNSPECIFIED, "file created at " + filePath);
+		for (String lineGrossAmount : lineGrossAmounts)
 		{
-			jurisdictionKey=address.getJurisdictionKey();
-			if( ((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("GEOCODE")))
-					|| ((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("POSTAL")) && (address.getGeocode()==null))
-					|| ((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("NoCode")) && (address.getGeocode()==null) && (address.getPostalCode() == null)) )
+			final UiModelScenarioDetail uiModelScenarioDetail = ModelScenarioUtil.buildNewModelScenario(testRunData.getTestCompanyName(),
+																											testRunData.getTestCompanyUUID(),
+																											testRunData.getProductCategoryName(),
+																											contentExtract,
+																											lineGrossAmount,
+																											testRunData.getModelScenarioName(),
+																											taxType);
+			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Invoice line number: " + uiModelScenarioDetail.getScenarioLines().size());
+			final IndataType indata = buildIndata(testRunData.getExternalCompanyID());
+
+			final String invoiceTaxCode = testRunData.getInvoiceTaxCode();
+			final String lineTaxCode = testRunData.getLineTaxCode();
+
+			int scenarioCounter = 1;
+			List<String> jurisdictionList = testRunData.getJurisdictionKeys();
+			List<String> postalcodeList = testRunData.getPostalCodeList();
+			String jurisdictionKey;
+			HashMap<String, String> jurisdictionMap = new HashMap<>();
+			Set<LocalDate> effectiveDates;
+	//		String filePath = System.getProperty("user.dir") + System.getProperty("file.separator") + testRunData.getTestExtractConfigName() + "_Result_" + System.currentTimeMillis() + ".json";
+	//
+	//		File outputFile = new File(filePath);
+	//		LOGGER.info(Logger.EVENT_UNSPECIFIED, "file created at " + filePath);
+			List<Address> addresses = contentExtract.getAddresses();
+
+			Collections.sort(addresses);
+			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Skipped list : " + jurisdictionList);
+			setTaxType(indata, taxType);
+
+			getIndataInvoice(indata).setTAXCODE(invoiceTaxCode);
+			RQ_AUTH_MAP.clear();
+
+			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Total address number: " + addresses.size());
+			for (final Address address : addresses)
 			{
-				continue;
-			}
-			else {
-				//LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building location treatment data for jurisdiction:"+ address.getJurisdictionKey());
-
-				final LocationTreatmentData locationTreatmentData = LocationTreatmentBuilder.buildLocationTreatmentData(address, contentExtract,taxType);
-
-				if ((!locationTreatmentData.getProductAuthorityData().isEmpty() || !locationTreatmentData.getProductJurisdictionData().isEmpty()))
+				jurisdictionKey = address.getJurisdictionKey();
+				if (((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("GEOCODE")))
+					|| ((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("POSTAL")) && (address.getGeocode() == null))
+					|| ((jurisdictionMap.containsKey(jurisdictionKey)) && (jurisdictionMap.get(jurisdictionKey).contains("NoCode")) && (address.getGeocode() == null) && (address.getPostalCode() == null)))
 				{
-					LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building new scenario for Address: " + address.getPostalCode()+" and with jurisdiction : "+jurisdictionKey);
-					//uiModelScenarioDetail.setLocationList(ModelScenarioUtil.buildLocations(address, countryList,testRunData.getTestExtractConfigName()));
-					if(address.getPostalCode()!=null && address.getGeocode()!=null){
-						if(jurisdictionMap.get(jurisdictionKey)!=null){
-							String value= jurisdictionMap.get(jurisdictionKey) +"GEOCODE";
-							jurisdictionMap.put(jurisdictionKey,value);
-						}
-						else{
-							jurisdictionMap.put(jurisdictionKey,"POSTALGEOCODE");
+					continue;
+				}
+				else
+				{
+					//LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building location treatment data for jurisdiction:"+ address.getJurisdictionKey());
 
-						}
-						LOGGER.info(Logger.EVENT_UNSPECIFIED, "For jurisdiction: "+jurisdictionKey+" and with geocode: "+address.getGeocode());
-					}
-					else if(address.getPostalCode()!=null && address.getGeocode()==null){
-						jurisdictionMap.put(jurisdictionKey,"POSTAL");
-						LOGGER.info(Logger.EVENT_UNSPECIFIED, "For jurisdiction (without geocode) : "+jurisdictionKey);
-					}
-					else if(address.getPostalCode()==null && address.getGeocode()==null){
-						jurisdictionMap.put(jurisdictionKey,"NoCode");
-						LOGGER.info(Logger.EVENT_UNSPECIFIED, "For jurisdiction (without postal and geocode) : "+jurisdictionKey);
-					}
+					final LocationTreatmentData locationTreatmentData = LocationTreatmentBuilder.buildLocationTreatmentData(address, contentExtract, taxType);
 
-					if(jurisdictionList !=null && !jurisdictionList.contains(jurisdictionKey)){
-						continue;
-
-					}
-					if(postalcodeList !=null && !postalcodeList.contains(address.getPostalCode())){
-						continue;
-					}
-
-					setZoneAddress(indata, address,taxType);
-
-					effectiveDates=getEffectiveDate(locationTreatmentData);
-					for(LocalDate mDate:effectiveDates){
-
-						final DateTimeFormatter dateTimeFormatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-						final String scenarioDate1 = mDate.format(dateTimeFormatter1);
-						LOGGER.info(Logger.EVENT_UNSPECIFIED,"The effective date for this jurisdiction: "+jurisdictionKey+" is: "+scenarioDate1);
-						getIndataInvoice(indata).setINVOICEDATE(scenarioDate1);
-
-						addInvoiceLines(indata, uiModelScenarioDetail,lineTaxCode);
-
-						LOGGER.info(Logger.EVENT_UNSPECIFIED,
-								String.format("Calling tax calculation api %s, invoice line count: %s", scenarioCounter,
-										getIndataInvoice(indata).getLINE().size()));
-						final TaxCalculationResponse taxCalculationResponse = soapClient.sendTaxCalcRequest(
-								testRunData.getSoapUri(),
-								testRunData.getSoapUser(),
-								testRunData.getSoapPassword(),
-								indata,
-								testRunData.getSoapTimeoutRetryNumber());
-						scenarioCounter++;
-						if (!taxCalculationResponse.getOUTDATA().getREQUESTSTATUS().isISSUCCESS())
+					if ((!locationTreatmentData.getProductAuthorityData().isEmpty() || !locationTreatmentData.getProductJurisdictionData().isEmpty()))
+					{
+						LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building new scenario for Address: " + address.getPostalCode() + " and with jurisdiction : " + jurisdictionKey);
+						//uiModelScenarioDetail.setLocationList(ModelScenarioUtil.buildLocations(address, countryList,testRunData.getTestExtractConfigName()));
+						if (address.getPostalCode() != null && address.getGeocode() != null)
 						{
-							LOGGER.error(Logger.EVENT_FAILURE, "Get tax calculation response failed!");
-							updateDETErrorResponse(scenarioCounter, outputFile, locationTreatmentData, taxCalculationResponse.getOUTDATA().getREQUESTSTATUS());
+							if (jurisdictionMap.get(jurisdictionKey) != null)
+							{
+								String value = jurisdictionMap.get(jurisdictionKey) + "GEOCODE";
+								jurisdictionMap.put(jurisdictionKey, value);
+							}
+							else
+							{
+								jurisdictionMap.put(jurisdictionKey, "POSTALGEOCODE");
+
+							}
+							LOGGER.info(Logger.EVENT_UNSPECIFIED, "For jurisdiction: " + jurisdictionKey + " and with geocode: " + address.getGeocode());
 						}
-						else
+						else if (address.getPostalCode() != null && address.getGeocode() == null)
 						{
-							LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing scenario rate to extract rate for location.");
-							List<TestCase> returnedResult = compareScenarioAndExtract(taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate, scenarioCounter);
-							testCases.addAll(returnedResult);
-							appendResultToFile(returnedResult, outputFile);
+							jurisdictionMap.put(jurisdictionKey, "POSTAL");
+							LOGGER.info(Logger.EVENT_UNSPECIFIED, "For jurisdiction (without geocode) : " + jurisdictionKey);
 						}
-			}
-		}
+						else if (address.getPostalCode() == null && address.getGeocode() == null)
+						{
+							jurisdictionMap.put(jurisdictionKey, "NoCode");
+							LOGGER.info(Logger.EVENT_UNSPECIFIED, "For jurisdiction (without postal and geocode) : " + jurisdictionKey);
+						}
+
+						if (jurisdictionList != null && !jurisdictionList.contains(jurisdictionKey))
+						{
+							continue;
+
+						}
+						if (postalcodeList != null && !postalcodeList.contains(address.getPostalCode()))
+						{
+							continue;
+						}
+
+						setZoneAddress(indata, address, taxType);
+
+						effectiveDates = getEffectiveDate(locationTreatmentData);
+						for (LocalDate mDate : effectiveDates)
+						{
+
+							final DateTimeFormatter dateTimeFormatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+							final String scenarioDate1 = mDate.format(dateTimeFormatter1);
+							LOGGER.info(Logger.EVENT_UNSPECIFIED, "The effective date for this jurisdiction: " + jurisdictionKey + " is: " + scenarioDate1);
+							getIndataInvoice(indata).setINVOICEDATE(scenarioDate1);
+
+							addInvoiceLines(indata, uiModelScenarioDetail, lineTaxCode);
+
+							LOGGER.info(Logger.EVENT_UNSPECIFIED,
+										String.format("Calling tax calculation api %s, invoice line count: %s", scenarioCounter,
+													  getIndataInvoice(indata).getLINE().size()));
+							final TaxCalculationResponse taxCalculationResponse = soapClient.sendTaxCalcRequest(
+									testRunData.getSoapUri(),
+									testRunData.getSoapUser(),
+									testRunData.getSoapPassword(),
+									indata,
+									testRunData.getSoapTimeoutRetryNumber());
+							scenarioCounter++;
+							if (!taxCalculationResponse.getOUTDATA().getREQUESTSTATUS().isISSUCCESS())
+							{
+								LOGGER.error(Logger.EVENT_FAILURE, "Get tax calculation response failed!");
+								updateDETErrorResponse(scenarioCounter, outputFile, locationTreatmentData, taxCalculationResponse.getOUTDATA().getREQUESTSTATUS());
+							}
+							else
+							{
+								LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing scenario rate to extract rate for location.");
+								List<TestCase> returnedResult = compareScenarioAndExtract(taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate, scenarioCounter);
+								testCases.addAll(returnedResult);
+								appendResultToFile(returnedResult, outputFile);
+							}
+						}
+					}
+				}
 			}
 		}
 
@@ -941,6 +957,7 @@ public final class TestRunnerService
 				BigDecimal tierAmount= BigDecimal.valueOf(0);
 				for (final Tier tier : treatment.getTierList())
 				{
+
 					if(treatment.getSplitType().equalsIgnoreCase("G")) {
 						if (tier.getHighValue() == null) {
 							if (IS_GREATER_THAN_EQUAL_TO.contains(grossAmount.compareTo(tier.getLowValue()))) {
