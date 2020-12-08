@@ -115,8 +115,6 @@ public final class TestRun
 
 	private List<String> postalCodeList;
 
-	private String taxType;
-
 	private String productCategoryName;
 
 	private String lineTaxCode;

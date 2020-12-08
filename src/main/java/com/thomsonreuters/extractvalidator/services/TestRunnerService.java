@@ -3,6 +3,7 @@ package com.thomsonreuters.extractvalidator.services;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.thomsonreuters.extractvalidator.dao.SrcCFGRegionTaxTypeDao;
 import com.thomsonreuters.extractvalidator.dao.SrcRuleQualifierDao;
 import com.thomsonreuters.extractvalidator.dto.RunResults;
 import com.thomsonreuters.extractvalidator.dto.TestCase;
@@ -118,6 +119,9 @@ public final class TestRunnerService
 
 	@Autowired
 	private SrcRuleQualifierDao srcRuleQualifierDao;
+
+	@Autowired
+	private SrcCFGRegionTaxTypeDao srcCFGRegionTaxTypeDao;
 
 
 	/**
@@ -289,23 +293,8 @@ public final class TestRunnerService
 		indataInvoice.setCALCULATIONDIRECTION("F");
 		indataInvoice.setCOMPANYROLE("S");
 		indataInvoice.setCURRENCYCODE("USD");
-//		indataInvoice.setINVOICEDATE("2018-08-08");
 		indataInvoice.setISAUDITED("N");
-//		ZoneAddressType zoneAddressType = new ZoneAddressType();
-//		zoneAddressType.setCOUNTRY("UNITED STATES");
-//		zoneAddressType.setSTATE("NEW YORK");
-//		zoneAddressType.setCITY("NEW YORK");
-//		zoneAddressType.setPOSTCODE("10001");
-//		indataInvoice.setSHIPFROM(zoneAddressType);
-//		indataInvoice.setSHIPTO(zoneAddressType);
 		indataInvoice.setTRANSACTIONTYPE("GS");
-//		IndataLineType indataLineType = new IndataLineType();
-//		indataLineType.setID("1");
-//		indataLineType.setLINENUMBER(BigDecimal.valueOf(1));
-//		indataLineType.setGROSSAMOUNT("100");
-//		indataLineType.setPRODUCTCODE("clothes");
-//		indataInvoice.getLINE().add(indataLineType);
-
 		indata.getINVOICE().add(indataInvoice);
 		return indata;
 	}
@@ -341,11 +330,11 @@ public final class TestRunnerService
 		return zoneAddressType;
 	}
 
-	private void setZoneAddress(IndataType indata, Address address, String taxType)
+	private void setZoneAddress(IndataType indata, Address address,List<String> taxTypes)
 	{
 		ZoneAddressType zoneAddressType = buildZoneAddress(address);
 
-		if(taxType.equalsIgnoreCase("US")){
+		if(taxTypes.contains("US")){
 			ZoneAddressType specialAddress_US = new ZoneAddressType();
 			specialAddress_US.setCOUNTRY("UNITED STATES");
 			specialAddress_US.setSTATE("CALIFORNIA");
@@ -363,15 +352,15 @@ public final class TestRunnerService
 	private void setTaxType (IndataType indata, String taxType)
 	{
 		AddressType addressType= new AddressType();
-		addressType.setALL(taxType);
-		addressType.setCITY(taxType);
-		addressType.setCOUNTRY(taxType);
-		addressType.setCOUNTY(taxType);
-		addressType.setPROVINCE(taxType);
-		addressType.setDISTRICT(taxType);
-		addressType.setGEOCODE(taxType);
-		addressType.setPOSTCODE(taxType);
-		addressType.setSTATE(taxType);
+//		addressType.setALL(taxType);
+//		addressType.setCITY(taxType);
+//		addressType.setCOUNTRY(taxType);
+//		addressType.setCOUNTY(taxType);
+//		addressType.setPROVINCE(taxType);
+//		addressType.setDISTRICT(taxType);
+//		addressType.setGEOCODE(taxType);
+//		addressType.setPOSTCODE(taxType);
+//		addressType.setSTATE(taxType);
 		getIndataInvoice(indata).setTAXTYPE(addressType);
 	}
 
@@ -403,7 +392,6 @@ public final class TestRunnerService
 	{
 		final List<String> lineGrossAmounts = null == testRunData.getLineGrossAmounts() ? new LinkedList<>() : testRunData.getLineGrossAmounts();
 		final String companyID = testRunData.getTestCompanyID();
-		final String taxType = testRunData.getTaxType();
 		String filePath = System.getProperty("user.dir") + System.getProperty("file.separator") + testRunData.getTestExtractConfigName() + "_Result_" + System.currentTimeMillis() + ".json";
 
 		File outputFile = new File(filePath);
@@ -415,8 +403,8 @@ public final class TestRunnerService
 																											testRunData.getProductCategoryName(),
 																											contentExtract,
 																											lineGrossAmount,
-																											testRunData.getModelScenarioName(),
-																											taxType);
+																											testRunData.getModelScenarioName()
+																											);
 			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Invoice line number: " + uiModelScenarioDetail.getScenarioLines().size());
 			final IndataType indata = buildIndata(testRunData.getExternalCompanyID());
 
@@ -433,11 +421,16 @@ public final class TestRunnerService
 	//
 	//		File outputFile = new File(filePath);
 	//		LOGGER.info(Logger.EVENT_UNSPECIFIED, "file created at " + filePath);
+			List<String> taxTypes= srcCFGRegionTaxTypeDao.getTaxTypeForExtract(contentExtract.getExtractName());
+			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Total taxType: " + taxTypes);
+
 			List<Address> addresses = contentExtract.getAddresses();
 
 			Collections.sort(addresses);
 			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Skipped list : " + jurisdictionList);
-			setTaxType(indata, taxType);
+
+
+
 
 			getIndataInvoice(indata).setTAXCODE(invoiceTaxCode);
 			RQ_AUTH_MAP.clear();
@@ -456,7 +449,7 @@ public final class TestRunnerService
 				{
 					//LOGGER.info(Logger.EVENT_UNSPECIFIED, "Building location treatment data for jurisdiction:"+ address.getJurisdictionKey());
 
-					final LocationTreatmentData locationTreatmentData = LocationTreatmentBuilder.buildLocationTreatmentData(address, contentExtract, taxType);
+					final LocationTreatmentData locationTreatmentData = LocationTreatmentBuilder.buildLocationTreatmentData(address, contentExtract, taxTypes);
 
 					if ((!locationTreatmentData.getProductAuthorityData().isEmpty() || !locationTreatmentData.getProductJurisdictionData().isEmpty()))
 					{
@@ -497,7 +490,7 @@ public final class TestRunnerService
 							continue;
 						}
 
-						setZoneAddress(indata, address, taxType);
+						setZoneAddress(indata, address,taxTypes);
 
 						effectiveDates = getEffectiveDate(locationTreatmentData);
 						for (LocalDate mDate : effectiveDates)
@@ -528,7 +521,7 @@ public final class TestRunnerService
 							else
 							{
 								LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing scenario rate to extract rate for location.");
-								List<TestCase> returnedResult = compareScenarioAndExtract(taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate, scenarioCounter);
+								List<TestCase> returnedResult = compareScenarioAndExtract(taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate,taxTypes, scenarioCounter);
 								testCases.addAll(returnedResult);
 								appendResultToFile(returnedResult, outputFile);
 							}
@@ -626,6 +619,7 @@ public final class TestRunnerService
 													 final String productCategoryName,
 													 final LocationTreatmentData locationTreatmentData,
 													 final LocalDate effectiveDate,
+													 final List<String> taxTypes,
 													 final int scenarioCounter)
 	{
 		final Set<String> lineGrossAmounts1 = new HashSet<>();
@@ -636,7 +630,7 @@ public final class TestRunnerService
 		}
 
 		final Map<String, BigDecimal> scenarioProductRateMap1 = buildScenarioProductRateMap1(taxCalculationResponse, modelScenarioDetail.getScenarioLines());
-		final Map<String, BigDecimal> extractProductRateMap = buildExtractProductRateMap(locationTreatmentData, productCategoryName,effectiveDate, lineGrossAmounts1);
+		final Map<String, BigDecimal> extractProductRateMap = buildExtractProductRateMap(locationTreatmentData, productCategoryName,effectiveDate, lineGrossAmounts1,taxTypes);
 
 		final List<TestCase> testCases = new LinkedList<>();
 
@@ -857,7 +851,8 @@ public final class TestRunnerService
 	private Map<String, BigDecimal> buildExtractProductRateMap(final LocationTreatmentData locationTreatmentData,
 															   final String productCategoryName,
 															   final LocalDate effective_Date,
-															   final Set<String> lineGrossAmounts)
+															   final Set<String> lineGrossAmounts,
+															   final List<String> taxTypes)
 	{
 		final Map<String, BigDecimal> scenarioProductRateMap = new HashMap<>();
 
@@ -949,8 +944,10 @@ public final class TestRunnerService
 			}
 			if (null != treatment.getRate())
 			{
-
 				accumulatedTaxAmount = accumulatedTaxAmount.add(calculateTaxAmountFromExtract(treatment.getRate(),grossAmount));
+			}
+			else if(treatment.getFee()!=null){
+				accumulatedTaxAmount = accumulatedTaxAmount.add(treatment.getFee());
 			}
 			else
 			{

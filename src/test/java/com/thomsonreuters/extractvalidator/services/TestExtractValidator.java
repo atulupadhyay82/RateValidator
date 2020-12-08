@@ -65,9 +65,9 @@ public class TestExtractValidator {
 
         requestBean.setCleanupModelScenario(true);
 //        requestBean.setContentExtractBaseUrl("http://cre-sdm2-alb-1249178167.us-east-1.elb.amazonaws.com/"); // with derek code
-        requestBean.setContentExtractBaseUrl("https://cre-api-qa.onesourcetax.com/");
+       requestBean.setContentExtractBaseUrl("https://cre-api-sat.onesourcetax.com/");
         //requestBean.setContentExtractBaseUrl("http://localhost:8101");
-//        //requestBean.setContentExtractBaseUrl("https://cre-api-qa.onesourcetax.com/"); // no derek
+   //     requestBean.setContentExtractBaseUrl("https://cre-api-qa.onesourcetax.com/"); // no derek
 //        requestBean.setDeterminationBaseUrl("https://det-cre-sat.onesourcetax.com/");
         List<String> lineGrossAmount =new ArrayList<String>();
 
@@ -77,15 +77,15 @@ public class TestExtractValidator {
 //        lineGrossAmount.add("36000");
         // DC amounts
 //        lineGrossAmount.add("100");
-//        lineGrossAmount.add("10000");
+       lineGrossAmount.add("1000");
         // TN amounts
 
-        lineGrossAmount.add("1000");
+
 //        lineGrossAmount.add("36000");
         requestBean.setLineGrossAmounts(lineGrossAmount);
         requestBean.setModelScenarioName("Tier_Model");
-     //  requestBean.setServicePassword("e95XnPgNsDVxpPQP");
-        requestBean.setServicePassword("password");
+      requestBean.setServicePassword("e95XnPgNsDVxpPQP");
+     //   requestBean.setServicePassword("password");
         requestBean.setServiceUser("^elvis-rest-client");
 //        requestBean.setServiceUser("^dba");
         requestBean.setSkipScenarios(0);
@@ -93,13 +93,13 @@ public class TestExtractValidator {
 //        requestBean.setTestExtractConfigName("VTestVE-TaxType");
 //        requestBean.setTestCompanyID("7760");
 //        requestBean.setTestCompanyUUID("1fb52dcb-d2aa-4857-987d-5da979948a59");
-        requestBean.setTestExtractConfigName("WayfairUAT_34_NC");
+        requestBean.setTestExtractConfigName("WayfairUAT_07_CT");
         requestBean.setTestCompanyName("01_Wayfair_US");
         requestBean.setTestCompanyID("18145");
         requestBean.setTestCompanyUUID("67e8a3b4-f2f1-4286-90c4-611c5dbce973");
        // requestBean.setProductCategoryName("Installation Service Charges - Separately Negotiated");
         requestBean.setTestRunNumber("1");
-        requestBean.setTaxType("SA");
+       // requestBean.setInvoiceTaxCode("");
 //        requestBean.setEnvCredentialsID("Atul.Upadhyay.vbr");
 //        requestBean.setEnvCredentialsPassword("Dec@1234");
 //        requestBean.setEnvironmentMS("SAT");

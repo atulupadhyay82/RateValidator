@@ -34,7 +34,7 @@ public final class LocationTreatmentBuilder
 	 *
 	 * @return A set of data that relates only to the given jurisdiction key.
 	 */
-	public static LocationTreatmentData buildLocationTreatmentData(final Address address, final ContentExtract contentExtract, final String taxType)
+	public static LocationTreatmentData buildLocationTreatmentData(final Address address, final ContentExtract contentExtract, final List<String> taxTypes)
 	{
 		final LocationTreatmentData locationTreatmentData = new LocationTreatmentData();
 		final Long jurisdictionNKey = Long.parseLong(address.getJurisdictionKey());
@@ -49,11 +49,11 @@ public final class LocationTreatmentBuilder
 		// Treatment Mapping which relates to grouping by tax type.
 		if (null == contentExtract.getJurisdictionTreatmentMappings())
 		{
-			buildLocationTreatmentDataByAuthority(locationTreatmentData, contentExtract,taxType);
+			buildLocationTreatmentDataByAuthority(locationTreatmentData, contentExtract,taxTypes);
 		}
 		else if (null == contentExtract.getJurisdictionAuthorities())
 		{
-			buildLocationTreatmentsByJurisdiction(locationTreatmentData, contentExtract,taxType);
+			buildLocationTreatmentsByJurisdiction(locationTreatmentData, contentExtract,taxTypes);
 		}
 
 		return locationTreatmentData;
@@ -66,7 +66,7 @@ public final class LocationTreatmentBuilder
 	 * @param locationTreatmentData The treatment data to populate.
 	 * @param contentExtract The content extract to build the data from.
 	 */
-	private static void buildLocationTreatmentDataByAuthority(final LocationTreatmentData locationTreatmentData, final ContentExtract contentExtract, final String taxType)
+	private static void buildLocationTreatmentDataByAuthority(final LocationTreatmentData locationTreatmentData, final ContentExtract contentExtract, final List<String> taxTypes)
 	{
 		final List<Authority> authorities = new LinkedList<>();
 
@@ -103,7 +103,7 @@ public final class LocationTreatmentBuilder
 				for (final AuthorityTreatmentMapping authorityTreatmentMapping : contentExtract.getAuthorityTreatmentMappings()) {
 					if (authorityTreatmentMapping.getAuthorityKey().equals(authority.getAuthorityKey())
 							&& authorityTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString())
-							&& ( authorityTreatmentMapping.getTaxType().equals(taxType))) {
+							&& ( taxTypes.contains(authorityTreatmentMapping.getTaxType()))) {
 						final List<Treatment> treatments = new LinkedList<>();
 						final TreatmentData authorityTreatmentData = new TreatmentData();
 						authorityTreatmentData.setFromDate(authorityTreatmentMapping.getEffectiveDate().getFrom());
@@ -130,7 +130,7 @@ public final class LocationTreatmentBuilder
 	 * @param locationTreatmentData The treatment data to populate.
 	 * @param contentExtract The content extract to build the data from.
 	 */
-	private static void buildLocationTreatmentsByJurisdiction(final LocationTreatmentData locationTreatmentData, final ContentExtract contentExtract, String taxType)
+	private static void buildLocationTreatmentsByJurisdiction(final LocationTreatmentData locationTreatmentData, final ContentExtract contentExtract, final List<String> taxTypes)
 	{
 		final List<JurisdictionTreatmentMapping> jurisdictionTreatmentMappings = new LinkedList<>();
 
@@ -157,7 +157,7 @@ public final class LocationTreatmentBuilder
 				{
 					if (jurisdictionTreatmentMapping.getProductCategoryKey().equals(product.getProductCategoryKey().toString())
 						&& jurisdictionTreatmentMapping.getTreatmentGroupKey().equals(treatmentGroupTreatment.getTreatmentGroupKey())
-						&& (jurisdictionTreatmentMapping.getTaxType().equals(taxType)))
+						&& (taxTypes.contains(jurisdictionTreatmentMapping.getTaxType())))
 					{
 						final JurisdictionData jurisdictionData = new JurisdictionData();
 

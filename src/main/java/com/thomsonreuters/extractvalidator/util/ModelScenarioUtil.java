@@ -34,7 +34,7 @@ public final class ModelScenarioUtil
 	 *
 	 *
 	 * @param contentExtract The extract to use for building lines.
-	 * @param lineGrossAmounts A list of gross amount to use for the line, if null use default of 1000.
+	 * @param lineGrossAmount A list of gross amount to use for the line, if null use default of 1000.
 	 * @param modelScenarioName Name of the model scenario to use.
 	 *
 	 * @return A model scenario with default values, and lines built for each product in the content extract.
@@ -44,8 +44,8 @@ public final class ModelScenarioUtil
 															  final String productCategoryName,
 															  final ContentExtract contentExtract,
 															  final String lineGrossAmount,
-															  final String modelScenarioName,
-															  final String taxType)
+															  final String modelScenarioName
+															  )
 	{
 		final UiModelScenarioDetail uiModelScenarioDetail = new UiModelScenarioDetail();
 
@@ -91,7 +91,7 @@ public final class ModelScenarioUtil
 		uiModelScenarioDetail.setModelScenarioCalcs(calcs);
 		uiModelScenarioDetail.setModelScenarioOverrides(new UiModelScenarioOverrides());
 		uiModelScenarioDetail.setModelScenarioReports(new UiModelScenarioReports());
-		uiModelScenarioDetail.setModelScenarioTaxType(new UiModelScenarioTaxType(taxType));
+		//uiModelScenarioDetail.setModelScenarioTaxType(new UiModelScenarioTaxType(taxType));
 
 
 		uiModelScenarioDetail.setScenarioRegistrations(new LinkedList<>());
@@ -183,7 +183,7 @@ public final class ModelScenarioUtil
 	 * Build a list of model scenario lines for all products in the extract. Using a default gross amount of 1000.
 	 *
 	 * @param contentExtract The content extract data.
-	 * @param lineGrossAmounts A list of gross amounts to use for the line, default to 1000 if null.
+	 * @param lineGrossAmount A list of gross amounts to use for the line, default to 1000 if null.
 	 *
 	 * @return The list of lines to use in the model scenario.
 	 */
