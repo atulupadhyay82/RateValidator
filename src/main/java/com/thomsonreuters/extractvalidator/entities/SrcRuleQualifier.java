@@ -7,17 +7,15 @@ package com.thomsonreuters.extractvalidator.entities;
  */
 
 
-import java.io.Serializable;
-import java.time.LocalDateTime;
+import com.thomsonreuters.extractvalidator.util.ActivityCode;
+import lombok.Data;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
-
-import lombok.Data;
-
-import com.thomsonreuters.extractvalidator.util.ActivityCode;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 
 @Data

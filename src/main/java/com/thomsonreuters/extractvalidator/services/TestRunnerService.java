@@ -16,6 +16,7 @@ import com.thomsonreuters.extractvalidator.util.LocationTreatmentBuilder;
 import com.thomsonreuters.extractvalidator.util.ModelScenarioUtil;
 import com.thomsonreuters.extractvalidator.util.SoapClient;
 import com.thomsonreuters.extractvalidator.wsdl.*;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -109,6 +110,8 @@ public final class TestRunnerService
 	 */
 	private  static final String ADMIN_AUTHORITY = "authority";
 
+	private static int  scenarioCounter = 0;
+
 	private static final Map<String,Boolean> RQ_AUTH_MAP = new HashMap<>();
 
 
@@ -174,7 +177,7 @@ public final class TestRunnerService
 		}
 		catch (final Exception ex)
 		{
-			final String message = String.format("Rest call to find extract or companies failed, message: %s", ex.getMessage());
+			final String message = String.format("Rest call to find extract is failed, message: %s", ExceptionUtils.getStackTrace(ex));
 
 			LOGGER.error(Logger.EVENT_FAILURE, message);
 
@@ -183,7 +186,7 @@ public final class TestRunnerService
 
 		if (null != extract && null == extract.getAddresses()) //&& null == extract.getLocations()
 		{
-			final String message = String.format("Extract found is incomplete: %s", extract.getExtractName());
+			final String message = String.format("Extract without any address: %s", extract.getExtractName());
 
 			LOGGER.error(Logger.EVENT_FAILURE, message);
 
@@ -214,9 +217,9 @@ public final class TestRunnerService
 			}
 			catch (final Exception ex)
 			{
-				runResults.getTestCases().add(prepareErrorTestCase(ex.getMessage()));
+				runResults.getTestCases().add(prepareErrorTestCase(ExceptionUtils.getStackTrace(ex)));
 
-				LOGGER.error(Logger.EVENT_FAILURE, "Something went wrong. Message: " + ex.getCause()+"\n"+ex.getStackTrace());
+				LOGGER.error(Logger.EVENT_FAILURE, "Something went wrong. Message: " + ExceptionUtils.getStackTrace(ex));
 			}
 		}
 
@@ -336,10 +339,10 @@ public final class TestRunnerService
 
 		if(taxTypes.contains("US")){
 			ZoneAddressType specialAddress_US = new ZoneAddressType();
-			specialAddress_US.setCOUNTRY("UNITED STATES");
-			specialAddress_US.setSTATE("CALIFORNIA");
-			specialAddress_US.setPOSTCODE("95823");
-			specialAddress_US.setGEOCODE("3000");
+			specialAddress_US.setCOUNTRY("");
+			specialAddress_US.setSTATE("");
+			specialAddress_US.setPOSTCODE("");
+			specialAddress_US.setGEOCODE("");
 			getIndataInvoice(indata).setSHIPFROM(specialAddress_US);
 		}
 		else{
@@ -352,15 +355,6 @@ public final class TestRunnerService
 	private void setTaxType (IndataType indata, String taxType)
 	{
 		AddressType addressType= new AddressType();
-//		addressType.setALL(taxType);
-//		addressType.setCITY(taxType);
-//		addressType.setCOUNTRY(taxType);
-//		addressType.setCOUNTY(taxType);
-//		addressType.setPROVINCE(taxType);
-//		addressType.setDISTRICT(taxType);
-//		addressType.setGEOCODE(taxType);
-//		addressType.setPOSTCODE(taxType);
-//		addressType.setSTATE(taxType);
 		getIndataInvoice(indata).setTAXTYPE(addressType);
 	}
 
@@ -391,7 +385,6 @@ public final class TestRunnerService
 													    final List<TestCase> testCases) throws Exception
 	{
 		final List<String> lineGrossAmounts = null == testRunData.getLineGrossAmounts() ? new LinkedList<>() : testRunData.getLineGrossAmounts();
-		final String companyID = testRunData.getTestCompanyID();
 		String filePath = System.getProperty("user.dir") + System.getProperty("file.separator") + testRunData.getTestExtractConfigName() + "_Result_" + System.currentTimeMillis() + ".json";
 
 		File outputFile = new File(filePath);
@@ -407,20 +400,15 @@ public final class TestRunnerService
 																											);
 			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Invoice line number: " + uiModelScenarioDetail.getScenarioLines().size());
 			final IndataType indata = buildIndata(testRunData.getExternalCompanyID());
-
+			final int skipScenarios= testRunData.getSkipScenarios();
 			final String invoiceTaxCode = testRunData.getInvoiceTaxCode();
 			final String lineTaxCode = testRunData.getLineTaxCode();
-
-			int scenarioCounter = 1;
 			List<String> jurisdictionList = testRunData.getJurisdictionKeys();
 			List<String> postalcodeList = testRunData.getPostalCodeList();
 			String jurisdictionKey;
 			HashMap<String, String> jurisdictionMap = new HashMap<>();
 			Set<LocalDate> effectiveDates;
-	//		String filePath = System.getProperty("user.dir") + System.getProperty("file.separator") + testRunData.getTestExtractConfigName() + "_Result_" + System.currentTimeMillis() + ".json";
-	//
-	//		File outputFile = new File(filePath);
-	//		LOGGER.info(Logger.EVENT_UNSPECIFIED, "file created at " + filePath);
+
 			List<String> taxTypes= srcCFGRegionTaxTypeDao.getTaxTypeForExtract(contentExtract.getExtractName());
 			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Total taxType: " + taxTypes);
 
@@ -429,11 +417,9 @@ public final class TestRunnerService
 			Collections.sort(addresses);
 			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Skipped list : " + jurisdictionList);
 
-
-
-
 			getIndataInvoice(indata).setTAXCODE(invoiceTaxCode);
 			RQ_AUTH_MAP.clear();
+			scenarioCounter=0;
 
 			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Total address number: " + addresses.size());
 			for (final Address address : addresses)
@@ -490,8 +476,6 @@ public final class TestRunnerService
 							continue;
 						}
 
-						setZoneAddress(indata, address,taxTypes);
-
 						effectiveDates = getEffectiveDate(locationTreatmentData);
 						for (LocalDate mDate : effectiveDates)
 						{
@@ -503,35 +487,68 @@ public final class TestRunnerService
 
 							addInvoiceLines(indata, uiModelScenarioDetail, lineTaxCode);
 
-							LOGGER.info(Logger.EVENT_UNSPECIFIED,
-										String.format("Calling tax calculation api %s, invoice line count: %s", scenarioCounter,
-													  getIndataInvoice(indata).getLINE().size()));
-							final TaxCalculationResponse taxCalculationResponse = soapClient.sendTaxCalcRequest(
-									testRunData.getSoapUri(),
-									testRunData.getSoapUser(),
-									testRunData.getSoapPassword(),
-									indata,
-									testRunData.getSoapTimeoutRetryNumber());
-							scenarioCounter++;
-							if (!taxCalculationResponse.getOUTDATA().getREQUESTSTATUS().isISSUCCESS())
-							{
-								LOGGER.error(Logger.EVENT_FAILURE, "Get tax calculation response failed!");
-								updateDETErrorResponse(scenarioCounter, outputFile, locationTreatmentData, taxCalculationResponse.getOUTDATA().getREQUESTSTATUS());
+							if(address.getPostalRange()!=null){
+								int beginPostal= Integer.parseInt(address.getPostalRange().getBegin());
+								int endPostal=Integer.parseInt(address.getPostalRange().getEnd());
+								Address rangeAddr= new Address();
+								rangeAddr.setCountry(address.getCountry());
+								rangeAddr.setState(address.getState());
+								rangeAddr.setProvince(address.getProvince());
+								rangeAddr.setDistrict(address.getDistrict());
+								rangeAddr.setCounty(address.getCounty());
+								rangeAddr.setCity(address.getCity());
+								while (beginPostal<=endPostal) {
+									rangeAddr.setPostalCode(String.format("%05d",beginPostal));
+									rangeAddr.setGeocode(address.getGeocode());
+									setZoneAddress(indata, rangeAddr, taxTypes);
+									locationTreatmentData.setAddress(rangeAddr);
+									makeDeterminationCall(testRunData, indata, outputFile, uiModelScenarioDetail, locationTreatmentData, mDate, taxTypes,  skipScenarios, testCases);
+									beginPostal++;
+								}
 							}
-							else
-							{
-								LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing scenario rate to extract rate for location.");
-								List<TestCase> returnedResult = compareScenarioAndExtract(taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate,taxTypes, scenarioCounter);
-								testCases.addAll(returnedResult);
-								appendResultToFile(returnedResult, outputFile);
+							else {
+								setZoneAddress(indata, address, taxTypes);
+								makeDeterminationCall(testRunData,indata,outputFile,uiModelScenarioDetail,locationTreatmentData,mDate,taxTypes,skipScenarios,testCases);
+
+								}
 							}
+
 						}
 					}
 				}
 			}
 		}
 
-	}
+	private void makeDeterminationCall(TestRun testRunData, IndataType indata, File outputFile, UiModelScenarioDetail uiModelScenarioDetail, LocationTreatmentData locationTreatmentData, LocalDate mDate, List<String> taxTypes,  int skipScenarios, List<TestCase> testCases) {
+
+		scenarioCounter ++;
+
+		if(scenarioCounter <=skipScenarios && skipScenarios!=0){
+			LOGGER.error(Logger.EVENT_FAILURE,"Skipping scenarios: "+scenarioCounter);
+			return;
+		}
+		LOGGER.info(Logger.EVENT_UNSPECIFIED,
+				String.format("Calling tax calculation api %s, invoice line count: %s", scenarioCounter,
+						getIndataInvoice(indata).getLINE().size()));
+		final TaxCalculationResponse taxCalculationResponse = soapClient.sendTaxCalcRequest(
+				testRunData.getSoapUri(),
+				testRunData.getSoapUser(),
+				testRunData.getSoapPassword(),
+				indata,
+				testRunData.getSoapTimeoutRetryNumber());
+		if (!taxCalculationResponse.getOUTDATA().getREQUESTSTATUS().isISSUCCESS())
+		{
+			LOGGER.error(Logger.EVENT_FAILURE, "Get tax calculation response failed!");
+			updateDETErrorResponse(scenarioCounter, outputFile, locationTreatmentData, taxCalculationResponse.getOUTDATA().getREQUESTSTATUS());
+		}
+		else
+		{
+			LOGGER.info(Logger.EVENT_UNSPECIFIED, "Comparing scenario rate to extract rate for location for scenario: "+scenarioCounter );
+			List<TestCase> returnedResult = compareScenarioAndExtract(taxCalculationResponse, uiModelScenarioDetail, testRunData.getProductCategoryName(), locationTreatmentData, mDate,taxTypes, scenarioCounter);
+			testCases.addAll(returnedResult);
+			appendResultToFile(returnedResult, outputFile);
+		}
+}
 
 
 	private void updateDETErrorResponse(final int scenarioCounter, final File outputFile, final LocationTreatmentData locationTreatmentData,
