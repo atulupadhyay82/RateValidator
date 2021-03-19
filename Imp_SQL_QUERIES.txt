@@ -1,0 +1,100 @@
+Check bad data query
+
+select
+(SELECT count(*)  FROM TB_PRODUCT_CATEGORIES where merchant_id not in
+(select merchant_id from tb_merchants)) as   X1,
+(SELECT count(*)  FROM TB_REFERENCE_LISTS where merchant_id not in
+(select merchant_id from tb_merchants)) as   X2,
+(SELECT count(*)  FROM TB_RULES where merchant_id not in
+(select merchant_id from tb_merchants)) as X3,
+(SELECT count(*)  FROM TB_RATES where merchant_id not in
+(select merchant_id from tb_merchants)) as X4,
+(SELECT count(*)  FROM TB_AUTHORITIES where merchant_id not in
+(select merchant_id from tb_merchants)) as   X5,
+(SELECT count(*)  from tb_merchants where registration_group_id not in
+(SELECT registration_group_id from tb_merch_reg_groups)) as X6,
+(SELECT count(*)  from tb_locations where merchant_id not in
+(select merchant_id from tb_merchants)) as   X7,
+(SELECT count(*)  FROM TB_PRODUCT_CROSS_REF_GROUPS where merchant_id not in
+(select merchant_id from tb_merchants)) as   X8,
+(SELECT count(*)  FROM TB_ESTABLISHED_ZONES where zone_id not in
+(select zone_id from tb_zones)) as X9,
+(SELECT count(*)  FROM TB_ESTABLISHED_ZONES where merchant_id not in
+(select merchant_id from tb_merchants)) as   X10,
+(SELECT count(*)  from tb_zone_authorities where authority_id not in
+(select authority_id from tb_authorities)) as   X11,
+(SELECT count(*)  From tb_zone_authorities where zone_id not in
+(select zone_id from tb_zones)) as X12,
+(SELECT count(*)  from TB_PRODUCT_AUTHORITY_TYPES where authority_type_id not in
+(SELECT authority_type_id from TB_PRODUCT_AUTHORITIES)) as X13,
+(SELECT count(*)  FROM TB_PRODUCT_CROSS_REF where product_category_id not in
+(SELECT product_category_id from tb_product_categories)) as   X14,
+(SELECT count(*)  FROM TB_AUTHORITY_REQUIREMENTS where merchant_id not in
+(select merchant_id from tb_merchants)) as   X15,
+(SELECT count(*)  FROM TB_AUTHORITIES group by   UUID having count(uuid) >  1) as   X16,
+(SELECT count(*)  FROM TB_MERCHANTS group by external_token having count(external_token) >  1) as X17  
+from dual;
+
+
+--Sequence queries for extracts
+DECLARE
+  last_used NUMBER;
+  curr_seq NUMBER;
+  diff NUMBER;
+BEGIN
+  EXECUTE IMMEDIATE 'SELECT max(EXTRACT_ID) FROM EX_CFG_EXTRACTS' INTO last_used;
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_EXTRACT.nextval from dual' INTO curr_seq;
+  diff := last_used - curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_EXTRACT INCREMENT BY ' ||TO_CHAR(diff);
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_EXTRACT.nextval from dual'INTO curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_EXTRACT INCREMENT BY 1';
+  EXECUTE IMMEDIATE 'SELECT max(EXTRACT_REGION_ID) FROM EX_CFG_REGIONS' INTO last_used;
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_REGION.nextval from dual' INTO curr_seq;
+  diff := last_used - curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_REGION INCREMENT BY ' ||TO_CHAR(diff);
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_REGION.nextval from dual'INTO curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_REGION INCREMENT BY 1';
+  EXECUTE IMMEDIATE 'SELECT max(EXTRACT_STORE_COMPANY_ID) FROM EX_CFG_STORE_COMPANIES' INTO last_used;
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_STORE_COMPANY.nextval from dual' INTO curr_seq;
+  diff := last_used - curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_STORE_COMPANY INCREMENT BY ' ||TO_CHAR(diff);
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_STORE_COMPANY.nextval from dual'INTO curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_STORE_COMPANY INCREMENT BY 1';
+  EXECUTE IMMEDIATE 'SELECT max(EXTRACT_REGION_AUTH_TYPE_ID) FROM EX_CFG_REGION_AUTH_TYPES' INTO last_used;
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_REGION_AUTH_TYPE.nextval from dual' INTO curr_seq;
+  diff := last_used - curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_REGION_AUTH_TYPE INCREMENT BY ' ||TO_CHAR(diff);
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_REGION_AUTH_TYPE.nextval from dual'INTO curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_REGION_AUTH_TYPE INCREMENT BY 1';
+  EXECUTE IMMEDIATE 'SELECT max(EXTRACT_REGION_STATE_ID) FROM EX_CFG_REGION_STATES' INTO last_used;
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_REGION_STATE.nextval from dual' INTO curr_seq;
+  diff := last_used - curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_REGION_STATE INCREMENT BY ' ||TO_CHAR(diff);
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_REGION_STATE.nextval from dual'INTO curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_REGION_STATE INCREMENT BY 1';
+  EXECUTE IMMEDIATE 'SELECT max(EXTRACT_REGION_TAX_TYPE_ID) FROM EX_CFG_REGION_TAX_TYPES' INTO last_used;
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_REGION_TAX_TYPE.nextval from dual' INTO curr_seq;
+  diff := last_used - curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_REGION_TAX_TYPE INCREMENT BY ' ||TO_CHAR(diff);
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_REGION_TAX_TYPE.nextval from dual'INTO curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_REGION_TAX_TYPE INCREMENT BY 1';
+  EXECUTE IMMEDIATE 'SELECT max(EXTRACT_DISP_EXCEPTION_ID) FROM EX_CFG_DISP_EXCEPTIONS' INTO last_used;
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_DISP_EXP.nextval from dual' INTO curr_seq;
+  diff := last_used - curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_DISP_EXP INCREMENT BY ' ||TO_CHAR(diff);
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_DISP_EXP.nextval from dual'INTO curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_DISP_EXP INCREMENT BY 1';
+  EXECUTE IMMEDIATE 'SELECT max(EXTRACT_PROD_MAP_GROUP_ID) FROM EX_CFG_PROD_MAP_GROUPS' INTO last_used;
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_PROD_MAP_GRP.nextval from dual' INTO curr_seq;
+  diff := last_used - curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_PROD_MAP_GRP INCREMENT BY ' ||TO_CHAR(diff);
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_PROD_MAP_GRP.nextval from dual'INTO curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_PROD_MAP_GRP INCREMENT BY 1';
+  EXECUTE IMMEDIATE 'SELECT max(EXTRACT_ELEMENT_VALUE_ID) FROM EX_CFG_ELEMENT_VALUES' INTO last_used;
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_ELEMENT_VALUE.nextval from dual' INTO curr_seq;
+  diff := last_used - curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_ELEMENT_VALUE INCREMENT BY ' ||TO_CHAR(diff);
+  EXECUTE IMMEDIATE 'SELECT SEQ_CFG_ELEMENT_VALUE.nextval from dual'INTO curr_seq;
+  EXECUTE IMMEDIATE 'ALTER SEQUENCE SEQ_CFG_ELEMENT_VALUE INCREMENT BY 1';
+	COMMIT;
+END;
